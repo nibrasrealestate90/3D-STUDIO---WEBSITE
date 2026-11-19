@@ -2,6 +2,8 @@ import type { MetadataRoute } from 'next';
 import { getStorefrontProducts } from '@/lib/api';
 import { INITIAL_PRODUCTS } from '@/lib/mockData';
 
+export const dynamic = 'force-static';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://printstudio.ae').replace(/\/+$/, '');
   const now = new Date();
