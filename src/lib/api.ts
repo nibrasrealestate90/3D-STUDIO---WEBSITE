@@ -11,8 +11,29 @@ import {
   ContentResponse,
 } from './types';
 
+/**
+ * Resolves the storefront API base URL:
+ * - In the browser: returns '' (empty string) so all fetches use relative paths (/api/store/...)
+ *   which are routed through the Cloudflare Pages Function reverse proxy, ensuring strictly same-origin
+ *   requests with zero CORS restrictions.
+ * - On the server / build-time (Node.js): returns the upstream Vercel API URL so that static generation
+ *   (e.g., sitemap.ts) can fetch live product data.
+ */
+export const getApiBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    return '';
+  }
+  return (
+    process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, '') ||
+    'https://3d-printing-dashboard-peach.vercel.app'
+  );
+};
+
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, '') || 'http://localhost:3000';
+  typeof window !== 'undefined'
+    ? ''
+    : process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, '') ||
+      'https://3d-printing-dashboard-peach.vercel.app';
 
 export function mapStorefrontProductToStoreProduct(sp: StorefrontProduct): Product {
   const categoryIdMap: Record<string, string> = {
@@ -79,13 +100,13 @@ export async function getStorefrontProducts(
     }
     params.set('limit', String(limit));
 
-    const endpoint = `${API_BASE_URL}/api/store/products?${params.toString()}`;
+    const endpoint = `${getApiBaseUrl()}/api/store/products?${params.toString()}`;
     const res = await fetch(endpoint, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!res.ok) {
@@ -114,13 +135,13 @@ export async function getStorefrontContent(): Promise<{
   isUnavailable: boolean;
 }> {
   try {
-    const endpoint = `${API_BASE_URL}/api/store/content`;
+    const endpoint = `${getApiBaseUrl()}/api/store/content`;
     const res = await fetch(endpoint, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(5000),
     });
 
     if (res.ok) {
@@ -145,14 +166,14 @@ export async function getStorefrontProductBySlug(
 ): Promise<{ product: Product | null; isFromApi: boolean; isUnavailable: boolean }> {
   try {
     const cleanSlug = encodeURIComponent(slug.trim());
-    const endpoint = `${API_BASE_URL}/api/store/products/${cleanSlug}`;
+    const endpoint = `${getApiBaseUrl()}/api/store/products/${cleanSlug}`;
 
     const res = await fetch(endpoint, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(5000),
     });
 
     if (res.ok) {
@@ -177,7 +198,7 @@ export async function getStorefrontProductBySlug(
  */
 export async function submitEnquiry(input: EnquiryInput): Promise<EnquiryResponse> {
   try {
-    const endpoint = `${API_BASE_URL}/api/store/enquiries`;
+    const endpoint = `${getApiBaseUrl()}/api/store/enquiries`;
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -219,7 +240,7 @@ export async function submitEnquiry(input: EnquiryInput): Promise<EnquiryRespons
  */
 export async function submitQuoteRequest(input: QuoteInput): Promise<QuoteResponse> {
   try {
-    const endpoint = `${API_BASE_URL}/api/store/quotes`;
+    const endpoint = `${getApiBaseUrl()}/api/store/quotes`;
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -253,6 +274,65 @@ export async function submitQuoteRequest(input: QuoteInput): Promise<QuoteRespon
       success: false,
       message: 'Network offline: Stored locally in demo queue. Continue directly on WhatsApp.',
       error: 'NETWORK_ERROR',
+    };
+  }
+}
+
+export interface QuotePresignInput {
+  fileName: string;
+  fileSizeBytes: number;
+  mimeType?: string;
+}
+
+export interface QuotePresignResponse {
+  success: boolean;
+  uploadUrl?: string;
+  uploadToken?: string;
+  expiresInSeconds?: number;
+  fileName?: string;
+  fileSizeBytes?: number;
+  mimeType?: string;
+  requiredHeaders?: Record<string, string>;
+  error?: string;
+  message?: string;
+  storageConfigured?: boolean;
+}
+
+/**
+ * Request CAD upload pre-signed URL and upload intent via POST /api/store/quotes/presign
+ */
+export async function requestQuotePresign(input: QuotePresignInput): Promise<QuotePresignResponse> {
+  try {
+    const endpoint = `${getApiBaseUrl()}/api/store/quotes/presign`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(input),
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: data?.error || `PRESIGN_ERROR_${res.status}`,
+        message: data?.message || 'Failed to request CAD upload pre-signed URL.',
+        storageConfigured: data?.storageConfigured,
+      };
+    }
+
+    return {
+      success: true,
+      ...data,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: 'NETWORK_ERROR',
+      message: 'Failed to communicate with quote pre-signing service.',
     };
   }
 }
