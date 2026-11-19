@@ -1,4 +1,4 @@
-# LayerCraft 3D — Dubai 3D Printing & Custom Creations (`print-studio-website`)
+# 3d studio — Dubai 3D Printing & Custom Creations (`print-studio-website`)
 
 The independent, public-facing website for **LayerCraft 3D** — a premium design and 3D printing studio based in the Al Quoz Creative District, Dubai, United Arab Emirates.
 
