@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #FCF2EC;
+  --color-peach: #FCE3CB;
+  --color-orange: #F45A00;
+  --color-orange-hover: #D94E00;
+  --color-orange-dark: #B83800;
+  --color-orange-text: #963200;
+  --color-navy: #0D1B35;
+  --color-navy-soft: #1B2D4E;
+  --color-muted: #4A5568;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  /* Emil Kowalski Custom Easing Curves */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html {
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    background-color: #FCF2EC;
+    color: #0D1B35;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #FCF2EC;
+    color: #0D1B35;
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FCF2EC;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0D1B3520;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0D1B3540;
+}
+
+/* ----------------------------------------------------------------------------
+   Emil Kowalski Design Engineering & Motion Polish
+   ---------------------------------------------------------------------------- */
+
+/* Tactile press feedback for buttons and interactive controls (160ms, scale 0.97) */
+.press-feedback {
+  transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out), border-color 160ms var(--ease-out), color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+}
+
+.press-feedback:active {
+  transform: scale(0.97);
+}
+
+/* Gated hover elevation for mouse/fine pointer devices (prevents sticky hover on touch) */
+@media (hover: hover) and (pointer: fine) {
+  .card-hover-elevate {
+    transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out), border-color 220ms var(--ease-out);
+  }
+  .card-hover-elevate:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 28px -10px rgba(13, 27, 53, 0.12);
+  }
+}
+
+/* Modal & Dialog animations: centered scale(0.96) -> scale(1) with custom ease-out */
+@keyframes modalBackdropFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalScaleEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-modal-backdrop {
+  animation: modalBackdropFade 200ms var(--ease-out) forwards;
+}
+
+.animate-modal-card {
+  animation: modalScaleEnter 240ms var(--ease-out) forwards;
+  transform-origin: center;
+}
+
+/* Choreographed staggered card entry (non-uniform, GPU-accelerated) */
+@keyframes fadeInUpWave {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-card {
+  opacity: 0;
+  animation: fadeInUpWave 340ms var(--ease-out) forwards;
+  animation-delay: calc(var(--stagger-index, 0) * 45ms);
+}
+
+/* Utility to hide scrollbars while allowing touch/scroll interaction */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Accessibility: honor prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .stagger-card {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
+  .animate-modal-card {
+    transform: none !important;
+    animation: modalBackdropFade 150ms ease forwards !important;
+  }
+}
