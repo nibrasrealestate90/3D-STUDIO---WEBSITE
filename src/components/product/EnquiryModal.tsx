@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircleIcon, CheckCircleIcon, LoadingIcon } from '@/components/ui/icons';
 import { useStore } from '@/context/StoreContext';
 import {
   buildProductWhatsAppMessage,
   formatAed,
   getEffectivePrice,
-  isValidEmail,
+  validateProductEnquiryForm,
 } from '@/lib/storeLogic';
 import { Modal } from '../ui/Modal';
 import { WhatsAppButton } from '../ui/WhatsAppButton';
@@ -20,12 +20,14 @@ export function EnquiryModal() {
   const [customerName, setCustomerName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [quantity, setQuantity] = useState(initialQuantity);
+  const [quantity, setQuantity] = useState<number | string>(initialQuantity);
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submittedRef, setSubmittedRef] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     if (product) {
@@ -47,23 +49,37 @@ export function EnquiryModal() {
     }
   };
 
+  const handleFieldChange = (field: string, value: string) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmittingRef.current || isSubmitting) return;
 
-    const nextErrors: Record<string, string> = {};
-    if (!customerName.trim()) nextErrors.customerName = 'Please enter your full name.';
-    if (!email.trim() || !isValidEmail(email))
-      nextErrors.email = 'Please enter a valid email address.';
-    if (!phone.trim() || phone.replace(/[^0-9]/g, '').length < 7)
-      nextErrors.phone = 'Please enter a valid phone or WhatsApp number.';
-    if (!message.trim()) nextErrors.message = 'Please add a short note about your enquiry.';
+    const formErrors = validateProductEnquiryForm({
+      customerName,
+      email,
+      phone,
+      quantity,
+      message,
+    });
 
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    setErrors(formErrors);
+    if (Object.keys(formErrors).length > 0) return;
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setServerError(null);
+
+    const parsedQty = typeof quantity === 'number' ? quantity : parseInt(String(quantity), 10) || 1;
+
     try {
       const record = await submitProductEnquiry({
         customerName: customerName.trim(),
@@ -71,26 +87,42 @@ export function EnquiryModal() {
         phone: phone.trim(),
         productId: product.id,
         productName: product.name,
-        quantity,
+        quantity: parsedQty,
         message: message.trim(),
       });
       setSubmittedRef(record.referenceCode);
-    } catch (err) {
-      setServerError('An unexpected issue occurred while submitting. Please chat directly on WhatsApp.');
+    } catch (err: any) {
+      if (err?.errors && typeof err.errors === 'object') {
+        const mappedErrors: Record<string, string> = {};
+        if (err.errors.customerName) mappedErrors.customerName = err.errors.customerName;
+        if (err.errors.customerEmail) mappedErrors.email = err.errors.customerEmail;
+        if (err.errors.email) mappedErrors.email = err.errors.email;
+        if (err.errors.customerPhone) mappedErrors.phone = err.errors.customerPhone;
+        if (err.errors.phone) mappedErrors.phone = err.errors.phone;
+        if (err.errors.message) mappedErrors.message = err.errors.message;
+        if (err.errors.quantity) mappedErrors.quantity = err.errors.quantity;
+        setErrors((prev) => ({ ...prev, ...mappedErrors }));
+      }
+      setServerError(
+        err?.message || 'An unexpected issue occurred while submitting. Please chat directly on WhatsApp.'
+      );
     } finally {
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
+
+  const parsedQtyNumber = typeof quantity === 'number' ? quantity : parseInt(String(quantity), 10) || 1;
 
   return (
     <Modal
       open={Boolean(product)}
       onClose={handleClose}
-      title={submittedRef ? 'Enquiry Recorded' : `Enquire About ${product.name}`}
+      title={submittedRef ? 'Enquiry Received' : `Enquire About ${product.name}`}
       subtitle={
         submittedRef
-          ? 'Your enquiry has been received by our Dubai studio team'
-          : `${formatAed(effectivePrice)} per unit · Indicative Price`
+          ? `Reference: ${submittedRef}`
+          : `${formatAed(effectivePrice)} per unit · Indicative Studio Price`
       }
       maxWidthClass="max-w-lg"
     >
@@ -98,25 +130,35 @@ export function EnquiryModal() {
         <div className="space-y-5">
           <div className="rounded-2xl bg-[#FCF2EC] border border-[#0D1B35]/10 p-5 flex items-start gap-3.5">
             <CheckCircleIcon className="w-6 h-6 text-[#F45A00] shrink-0 mt-0.5" aria-hidden="true" />
-            <div className="space-y-1.5">
-              <p className="font-display font-bold text-[#0D1B35]">
-                Reference: <span className="font-mono">{submittedRef}</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs uppercase tracking-wider font-semibold text-[#737373]">
+                  Studio Reference
+                </span>
+                <span className="font-mono font-bold text-sm bg-white px-2 py-0.5 rounded border border-[#0D1B35]/15 text-[#0D1B35]">
+                  {submittedRef}
+                </span>
+              </div>
+              <p className="font-display font-bold text-[#0D1B35] text-base">
+                Your enquiry has been registered in our Dubai studio queue.
               </p>
-              <p className="text-sm text-[#737373] leading-relaxed">
-                Thank you! Your enquiry has been registered in our Dubai studio queue. For an immediate reply or to confirm order and delivery details, you can continue directly with our workshop team on WhatsApp.
+              <p className="text-sm text-[#525252] leading-relaxed">
+                Thank you! Our studio team will review your specifications for <strong>{product.name}</strong> (Qty: {parsedQtyNumber}) and confirm scheduling and lead time. For immediate confirmation, you can continue directly on WhatsApp.
               </p>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
             <WhatsAppButton
-              message={buildProductWhatsAppMessage(
-                product.name,
-                effectivePrice,
-                quantity,
-                undefined,
-                product.sku
-              )}
+              message={
+                buildProductWhatsAppMessage(
+                  product.name,
+                  effectivePrice,
+                  parsedQtyNumber,
+                  undefined,
+                  product.sku
+                ) + ` [Ref: ${submittedRef}]`
+              }
               label="Continue on WhatsApp"
               variant="primary"
               className="flex-1 justify-center"
@@ -126,16 +168,40 @@ export function EnquiryModal() {
               onClick={handleClose}
               className="rounded-xl border border-[#0D1B35]/20 px-5 py-3 text-sm font-semibold text-[#0D1B35] hover:bg-[#FCF2EC] transition-colors cursor-pointer"
             >
-              Done
+              Close
             </button>
           </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {serverError && (
-            <div className="flex items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-600">
-              <AlertCircleIcon className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{serverError}</span>
+            <div
+              role="alert"
+              className="rounded-xl border border-red-500/20 bg-red-500/10 p-3.5 space-y-2.5"
+            >
+              <div className="flex items-start gap-2.5 text-xs text-red-700">
+                <AlertCircleIcon className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+                <div className="space-y-1">
+                  <p className="font-semibold">{serverError}</p>
+                  <p className="text-[11px] text-red-600/90 leading-normal">
+                    Your entered details are preserved below. You can make adjustments and retry, or reach out to us directly on WhatsApp.
+                  </p>
+                </div>
+              </div>
+              <div className="pt-1">
+                <WhatsAppButton
+                  message={buildProductWhatsAppMessage(
+                    product.name,
+                    effectivePrice,
+                    parsedQtyNumber,
+                    undefined,
+                    product.sku
+                  )}
+                  label="Connect via WhatsApp Instead"
+                  variant="whatsapp"
+                  className="w-full text-xs py-2 justify-center"
+                />
+              </div>
             </div>
           )}
 
@@ -148,12 +214,23 @@ export function EnquiryModal() {
                 id="enq-name"
                 type="text"
                 value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
+                onChange={(e) => {
+                  setCustomerName(e.target.value);
+                  handleFieldChange('customerName', e.target.value);
+                }}
+                aria-invalid={Boolean(errors.customerName)}
+                aria-describedby={errors.customerName ? 'enq-name-error' : undefined}
                 placeholder="e.g. Layla Al Hashimi"
-                className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors"
+                className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:bg-white focus:outline-none transition-colors ${
+                  errors.customerName
+                    ? 'border-red-500 bg-red-50/50 focus:border-red-500'
+                    : 'border-[#0D1B35]/15 bg-[#FCF2EC]/40 focus:border-[#F45A00]'
+                }`}
               />
               {errors.customerName && (
-                <p className="text-xs text-red-600 mt-1">{errors.customerName}</p>
+                <p id="enq-name-error" role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                  {errors.customerName}
+                </p>
               )}
             </div>
 
@@ -165,11 +242,24 @@ export function EnquiryModal() {
                 id="enq-phone"
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  handleFieldChange('phone', e.target.value);
+                }}
+                aria-invalid={Boolean(errors.phone)}
+                aria-describedby={errors.phone ? 'enq-phone-error' : undefined}
                 placeholder="+971 50 000 0000"
-                className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors"
+                className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:bg-white focus:outline-none transition-colors ${
+                  errors.phone
+                    ? 'border-red-500 bg-red-50/50 focus:border-red-500'
+                    : 'border-[#0D1B35]/15 bg-[#FCF2EC]/40 focus:border-[#F45A00]'
+                }`}
               />
-              {errors.phone && <p className="text-xs text-red-600 mt-1">{errors.phone}</p>}
+              {errors.phone && (
+                <p id="enq-phone-error" role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                  {errors.phone}
+                </p>
+              )}
             </div>
           </div>
 
@@ -182,16 +272,29 @@ export function EnquiryModal() {
                 id="enq-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  handleFieldChange('email', e.target.value);
+                }}
+                aria-invalid={Boolean(errors.email)}
+                aria-describedby={errors.email ? 'enq-email-error' : undefined}
                 placeholder="name@example.com"
-                className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors"
+                className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:bg-white focus:outline-none transition-colors ${
+                  errors.email
+                    ? 'border-red-500 bg-red-50/50 focus:border-red-500'
+                    : 'border-[#0D1B35]/15 bg-[#FCF2EC]/40 focus:border-[#F45A00]'
+                }`}
               />
-              {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
+              {errors.email && (
+                <p id="enq-email-error" role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                  {errors.email}
+                </p>
+              )}
             </div>
 
             <div>
               <label htmlFor="enq-qty" className="block text-xs font-semibold text-[#0D1B35] mb-1.5">
-                Quantity
+                Quantity *
               </label>
               <input
                 id="enq-qty"
@@ -199,9 +302,30 @@ export function EnquiryModal() {
                 min={1}
                 max={500}
                 value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors tabular-nums"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setQuantity(val === '' ? '' : parseInt(val, 10));
+                  if (errors.quantity) {
+                    setErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.quantity;
+                      return next;
+                    });
+                  }
+                }}
+                aria-invalid={Boolean(errors.quantity)}
+                aria-describedby={errors.quantity ? 'enq-qty-error' : undefined}
+                className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#0D1B35] focus:bg-white focus:outline-none transition-colors tabular-nums ${
+                  errors.quantity
+                    ? 'border-red-500 bg-red-50/50 focus:border-red-500'
+                    : 'border-[#0D1B35]/15 bg-[#FCF2EC]/40 focus:border-[#F45A00]'
+                }`}
               />
+              {errors.quantity && (
+                <p id="enq-qty-error" role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                  {errors.quantity}
+                </p>
+              )}
             </div>
           </div>
 
@@ -213,11 +337,24 @@ export function EnquiryModal() {
               id="enq-msg"
               rows={3}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                handleFieldChange('message', e.target.value);
+              }}
+              aria-invalid={Boolean(errors.message)}
+              aria-describedby={errors.message ? 'enq-msg-error' : undefined}
               placeholder="Include details about custom requirements, sizing, or delivery in Dubai..."
-              className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors resize-none"
+              className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:bg-white focus:outline-none transition-colors resize-none ${
+                errors.message
+                  ? 'border-red-500 bg-red-50/50 focus:border-red-500'
+                  : 'border-[#0D1B35]/15 bg-[#FCF2EC]/40 focus:border-[#F45A00]'
+              }`}
             />
-            {errors.message && <p className="text-xs text-red-600 mt-1">{errors.message}</p>}
+            {errors.message && (
+              <p id="enq-msg-error" role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                {errors.message}
+              </p>
+            )}
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
@@ -229,7 +366,7 @@ export function EnquiryModal() {
               {isSubmitting ? (
                 <>
                   <LoadingIcon className="w-4 h-4 animate-spin" />
-                  <span>Submitting Enquiry...</span>
+                  <span>Submitting...</span>
                 </>
               ) : (
                 <span>Submit Product Enquiry</span>

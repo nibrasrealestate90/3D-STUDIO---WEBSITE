@@ -200,6 +200,79 @@ export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
+/**
+ * Sensible international phone number validation.
+ * Accepts optional leading '+' and digits separated by spaces, hyphens, or parentheses.
+ * Requires 7 to 15 digits (ITU-T E.164 standard).
+ */
+export function isValidPhoneNumber(phone: string): boolean {
+  if (typeof phone !== 'string') return false;
+  const trimmed = phone.trim();
+  if (!trimmed) return false;
+  if (!/^\+?[0-9\s\-()]+$/.test(trimmed)) return false;
+  const digits = trimmed.replace(/[^0-9]/g, '');
+  return digits.length >= 7 && digits.length <= 15;
+}
+
+export interface ProductEnquiryFormInput {
+  customerName: string;
+  email: string;
+  phone: string;
+  quantity: number | string;
+  message: string;
+}
+
+export function validateProductEnquiryForm(
+  input: ProductEnquiryFormInput
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+
+  const name = String(input.customerName || '').trim();
+  if (!name) {
+    errors.customerName = 'Please enter your full name.';
+  } else if (name.length < 2) {
+    errors.customerName = 'Name must be at least 2 characters.';
+  } else if (name.length > 150) {
+    errors.customerName = 'Name cannot exceed 150 characters.';
+  }
+
+  const email = String(input.email || '').trim();
+  if (!email) {
+    errors.email = 'Please enter your email address.';
+  } else if (!isValidEmail(email) || email.length > 255) {
+    errors.email = 'Please enter a valid email address.';
+  }
+
+  const phone = String(input.phone || '').trim();
+  if (!phone) {
+    errors.phone = 'Please enter your phone or WhatsApp number.';
+  } else if (!isValidPhoneNumber(phone)) {
+    errors.phone = 'Please enter a valid phone number (7-15 digits).';
+  }
+
+  const rawQty = input.quantity;
+  const qty =
+    typeof rawQty === 'number'
+      ? rawQty
+      : Number(String(rawQty || '').trim());
+  if (!Number.isFinite(qty) || !Number.isInteger(qty) || qty < 1) {
+    errors.quantity = 'Quantity must be a positive integer of at least 1.';
+  } else if (qty > 500) {
+    errors.quantity = 'Quantity cannot exceed 500 units.';
+  }
+
+  const message = String(input.message || '').trim();
+  if (!message) {
+    errors.message = 'Please add a short note about your enquiry.';
+  } else if (message.length < 5) {
+    errors.message = 'Message must be at least 5 characters.';
+  } else if (message.length > 5000) {
+    errors.message = 'Message cannot exceed 5000 characters.';
+  }
+
+  return errors;
+}
+
 export function validateCustomPrintForm(
   input: CustomPrintFormInput
 ): Record<string, string> {

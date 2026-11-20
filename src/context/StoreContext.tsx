@@ -227,35 +227,45 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         'id' | 'referenceCode' | 'status' | 'internalNotes' | 'createdAt'
       >
     ) => {
+      const qtySuffix =
+        typeof payload.quantity === 'number' && payload.quantity > 1
+          ? ` (Qty: ${payload.quantity})`
+          : '';
+      const subject = `Enquiry: ${payload.productName}${qtySuffix}`;
+
+      const apiRes = await submitEnquiry({
+        customerName: payload.customerName,
+        customerEmail: payload.email,
+        customerPhone: payload.phone,
+        subject,
+        message: payload.message,
+        productId: payload.productId,
+      });
+
+      if (!apiRes.success) {
+        const error = new Error(apiRes.message || 'Enquiry submission failed.') as Error & {
+          code?: string;
+          errors?: Record<string, string>;
+        };
+        error.code = apiRes.error;
+        error.errors = apiRes.errors;
+        throw error;
+      }
+
+      const referenceCode = apiRes.enquiryId ? `ENQ-${apiRes.enquiryId}` : generateReferenceCode('LC-ENQ');
       const newEnquiry: CustomerEnquiry = {
         ...payload,
-        id: `enq-${Date.now()}`,
-        referenceCode: generateReferenceCode('LC-ENQ'),
+        id: apiRes.enquiryId ? `enq-${apiRes.enquiryId}` : `enq-${Date.now()}`,
+        referenceCode,
         status: 'New',
         internalNotes: '',
         createdAt: new Date().toISOString(),
       };
       setEnquiries((prev) => [newEnquiry, ...prev]);
 
-      // Fire to Dashboard API
-      try {
-        await submitEnquiry({
-          customerName: payload.customerName,
-          customerEmail: payload.email,
-          customerPhone: payload.phone,
-          subject: payload.selectedColor
-            ? `Enquiry: ${payload.productName} (${payload.selectedColor})`
-            : `Enquiry: ${payload.productName}`,
-          message: payload.message,
-          productId: payload.productId,
-        });
-      } catch (e) {
-        // Fallback already saved locally
-      }
-
       pushToast(
-        'Enquiry recorded',
-        `Reference ${newEnquiry.referenceCode} saved.`
+        'Enquiry received',
+        `Reference ${newEnquiry.referenceCode} confirmed.`
       );
       return newEnquiry;
     },

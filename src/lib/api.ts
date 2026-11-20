@@ -207,25 +207,31 @@ export async function submitEnquiry(input: EnquiryInput): Promise<EnquiryRespons
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
+      const defaultMsg =
+        res.status === 429
+          ? 'Too many enquiry submissions from this IP address. Please try again later.'
+          : `Enquiry submission failed (${res.status}).`;
+
       return {
         success: false,
-        message: data?.message || `Enquiry submission failed (${res.status}).`,
-        error: data?.error || 'SUBMISSION_ERROR',
+        message: data?.message || defaultMsg,
+        error: data?.error || (res.status === 429 ? 'RATE_LIMIT_EXCEEDED' : 'SUBMISSION_ERROR'),
         errors: data?.errors,
       };
     }
 
     return {
       success: true,
-      enquiryId: data.enquiryId,
+      enquiryId: data?.enquiryId,
       message:
-        data.message ||
+        data?.message ||
         'Your enquiry has been received. Our Dubai studio team will review and respond promptly.',
     };
   } catch (err) {
     return {
       success: false,
-      message: 'Network offline: Stored locally in demo queue. We will contact you via WhatsApp.',
+      message:
+        'Unable to connect to the studio servers. Please check your internet connection or reach out directly via WhatsApp.',
       error: 'NETWORK_ERROR',
     };
   }
