@@ -167,6 +167,7 @@ export async function getStorefrontContent(): Promise<{
       headers: {
         Accept: 'application/json',
       },
+      cache: 'no-store',
       signal: AbortSignal.timeout(5000),
     });
 

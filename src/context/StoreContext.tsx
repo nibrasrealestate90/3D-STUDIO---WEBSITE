@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   DEFAULT_STORE_SETTINGS,
   INITIAL_CATEGORIES,
@@ -21,6 +21,7 @@ import { getStorefrontProducts, getStorefrontContent, submitEnquiry, submitQuote
 import { toast } from 'sonner';
 
 const DEMO_STORAGE_KEY = '3dstudio_store_state_v1';
+const VISIBILITY_REFRESH_THROTTLE_MS = 30_000; // 30 seconds throttle for tab visibility refresh
 
 interface PersistedStoreState {
   products: Product[];
@@ -72,22 +73,23 @@ function loadInitialStoreState(): PersistedStoreState {
       const raw = window.localStorage.getItem(DEMO_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<PersistedStoreState>;
-        if (Array.isArray(parsed.products) && Array.isArray(parsed.categories)) {
-          // Only preserve products if they originated from live API
-          const validApiProducts = parsed.products.filter((p) => p.isFromApi);
-          return {
-            products: validApiProducts,
-            categories: parsed.categories,
-            enquiries: Array.isArray(parsed.enquiries) ? parsed.enquiries : INITIAL_ENQUIRIES,
-            customRequests: Array.isArray(parsed.customRequests)
-              ? parsed.customRequests
-              : INITIAL_CUSTOM_REQUESTS,
-            settings: parsed.settings
-              ? { ...DEFAULT_STORE_SETTINGS, ...parsed.settings }
-              : DEFAULT_STORE_SETTINGS,
-            wishlistIds: Array.isArray(parsed.wishlistIds) ? parsed.wishlistIds : [],
-          };
-        }
+        // Categories are strictly initialized to INITIAL_CATEGORIES safe fallback.
+        // Stale `parsed.categories` stored in old localStorage is intentionally ignored.
+        const validApiProducts = Array.isArray(parsed.products)
+          ? parsed.products.filter((p) => p.isFromApi)
+          : [];
+        return {
+          products: validApiProducts,
+          categories: INITIAL_CATEGORIES,
+          enquiries: Array.isArray(parsed.enquiries) ? parsed.enquiries : INITIAL_ENQUIRIES,
+          customRequests: Array.isArray(parsed.customRequests)
+            ? parsed.customRequests
+            : INITIAL_CUSTOM_REQUESTS,
+          settings: parsed.settings
+            ? { ...DEFAULT_STORE_SETTINGS, ...parsed.settings }
+            : DEFAULT_STORE_SETTINGS,
+          wishlistIds: Array.isArray(parsed.wishlistIds) ? parsed.wishlistIds : [],
+        };
       }
     } catch {
       // Fallback cleanly to empty state
@@ -126,6 +128,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     quantity?: number;
     color?: string;
   }>({ product: null });
+
+  const lastVisibilityFetchTimeRef = useRef<number>(Date.now());
+  const isVisibilityFetchingRef = useRef<boolean>(false);
 
   // On client mount, attempt to fetch live API products and website content
   useEffect(() => {
@@ -172,11 +177,60 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Refresh dynamic content when visitors return to an open tab
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      // Do not refresh while document remains hidden
+      if (typeof document === 'undefined' || document.visibilityState !== 'visible') {
+        return;
+      }
+
+      const now = Date.now();
+      // Throttle: at least 30 seconds between visibility refreshes
+      if (now - lastVisibilityFetchTimeRef.current < VISIBILITY_REFRESH_THROTTLE_MS) {
+        return;
+      }
+
+      // Prevent overlapping requests
+      if (isVisibilityFetchingRef.current) {
+        return;
+      }
+
+      isVisibilityFetchingRef.current = true;
+      lastVisibilityFetchTimeRef.current = now;
+
+      try {
+        const res = await getStorefrontContent();
+        // Handle failed requests without replacing valid current data with an invalid response
+        if (res && res.isFromApi) {
+          // Update categories when response is valid
+          if (Array.isArray(res.categories)) {
+            setCategories(res.categories);
+          }
+          // Update Instagram gallery only if existing content response is valid
+          if (Array.isArray(res.instagramGallery)) {
+            setInstagramGallery(res.instagramGallery);
+          }
+        }
+      } catch {
+        // Silently preserve current valid state on network failure
+      } finally {
+        isVisibilityFetchingRef.current = false;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   useEffect(() => {
     try {
-      const payload: PersistedStoreState = {
+      // Dynamic categories are intentionally excluded from localStorage persistence to prevent stale cache retention.
+      // Customer state (products, enquiries, customRequests, settings, wishlistIds) remains fully persisted.
+      const payload: Omit<PersistedStoreState, 'categories'> = {
         products,
-        categories,
         enquiries,
         customRequests,
         settings,
@@ -186,7 +240,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Ignore quota errors
     }
-  }, [products, categories, enquiries, customRequests, settings, wishlistIds]);
+  }, [products, enquiries, customRequests, settings, wishlistIds]);
 
   const dismissToast = useCallback((id: string) => {
     toast.dismiss(id);
