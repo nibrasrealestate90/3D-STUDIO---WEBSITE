@@ -34,6 +34,7 @@ export interface Product {
   price: number;
   salePrice?: number;
   images: string[];
+  imageUrl?: string | null;
   material: string;
   colors: string[];
   dimensions: string;

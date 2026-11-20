@@ -27,6 +27,11 @@ export function QuickViewModal() {
     quickViewProduct.sku
   );
 
+  const primaryImage =
+    quickViewProduct.images?.[0] ||
+    quickViewProduct.imageUrl ||
+    '/assets/images/hero_creations_dubai_1794842125042.jpg';
+
   return (
     <Modal
       open={Boolean(quickViewProduct)}
@@ -38,7 +43,7 @@ export function QuickViewModal() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-[#FCF2EC] border border-[#0D1B35]/10">
           <SafeImage
-            src={quickViewProduct.images[0]}
+            src={primaryImage}
             alt={quickViewProduct.name}
             fallbackTitle={quickViewProduct.name}
           />

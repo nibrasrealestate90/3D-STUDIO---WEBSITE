@@ -28,6 +28,9 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
     categories.find((c) => c.id === product.categoryId)?.name ||
     '3D Printed';
 
+  const primaryImage =
+    product.images?.[0] || product.imageUrl || '/assets/images/hero_creations_dubai_1794842125042.jpg';
+
   const handleCardClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     // Do not trigger card navigation if an interactive button was clicked
@@ -50,7 +53,7 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
           className="w-full h-full block"
         >
           <SafeImage
-            src={product.images[0]}
+            src={primaryImage}
             alt={product.name}
             fallbackTitle={product.name}
             className="w-full h-full object-cover transition-transform duration-300 ease-[var(--ease-out)] group-hover:scale-[1.025]"

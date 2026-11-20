@@ -10,6 +10,7 @@ import {
   InstagramPost,
   ContentResponse,
 } from './types';
+import { resolveProductImages } from './storeLogic';
 
 /**
  * Resolves the storefront API base URL:
@@ -49,15 +50,9 @@ export function mapStorefrontProductToStoreProduct(sp: StorefrontProduct): Produ
   const catLower = (sp.category || '').toLowerCase();
   const matchedCategoryId = categoryIdMap[catLower] || 'cat-desk-accessories';
 
-  // Multi-image array resolution: prefer sp.images if non-empty, then sp.imageUrl
-  let images: string[] = [];
-  if (Array.isArray(sp.images) && sp.images.length > 0) {
-    images = sp.images;
-  } else if (sp.imageUrl) {
-    images = [sp.imageUrl];
-  } else {
-    images = ['/assets/images/hero_creations_dubai_1794842125042.jpg'];
-  }
+  // Multi-image array resolution: strictly resolve valid URLs, preserve ordering, and deduplicate
+  const resolvedImages = resolveProductImages(sp.images, sp.imageUrl);
+  const images = resolvedImages.length > 0 ? resolvedImages : ['/assets/images/hero_creations_dubai_1794842125042.jpg'];
 
   return {
     id: sp.id,
@@ -67,6 +62,7 @@ export function mapStorefrontProductToStoreProduct(sp: StorefrontProduct): Produ
     description: sp.description || 'Precision 3D printed additive creation crafted in Dubai.',
     price: sp.sellingPrice,
     images,
+    imageUrl: resolvedImages[0] || sp.imageUrl || images[0],
     material: sp.material || 'Bio-Polymer PLA+ / PETG',
     colors: Array.isArray(sp.colors) && sp.colors.length > 0 ? sp.colors : ['Warm Cream', 'Deep Navy', 'Charcoal Black'],
     dimensions: sp.dimensions || (sp.weightGrams ? `Weight: ${sp.weightGrams}g` : 'Standard Studio Spec'),

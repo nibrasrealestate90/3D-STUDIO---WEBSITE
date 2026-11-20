@@ -28,6 +28,7 @@ import {
   buildProductWhatsAppMessage,
   formatAed,
   getEffectivePrice,
+  resolveProductImages,
 } from '@/lib/storeLogic';
 
 interface ProductDetailClientProps {
@@ -43,27 +44,89 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const [personalizationText, setPersonalizationText] = useState('');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
+  // Mobile touch swipe state
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+
+  // Strictly resolve and deduplicate all valid product gallery images (preserves dashboard ordering)
+  const resolvedList = resolveProductImages(product.images, product.imageUrl);
+  const images = resolvedList.length > 0 ? resolvedList : ['/assets/images/hero_creations_dubai_1794842125042.jpg'];
+  const activeImage = images[activeImageIndex] ?? images[0];
+
   useEffect(() => {
     if (product) {
-      setActiveImageIndex(0);
       setSelectedColor(product.colors[0] ?? 'Standard');
       setQuantity(1);
       setPersonalizationText('');
     }
-  }, [product]);
+  }, [product?.id]);
 
-  // Close lightbox on Escape key
+  // Keep active image index in valid bounds if product updates
+  useEffect(() => {
+    if (activeImageIndex >= images.length) {
+      setActiveImageIndex(0);
+    }
+  }, [images.length, activeImageIndex]);
+
+  const handlePrevImage = () => {
+    setActiveImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const handleNextImage = () => {
+    setActiveImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  // Keyboard navigation for lightbox (Escape, ArrowLeft, ArrowRight)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isLightboxOpen) return;
       if (e.key === 'Escape') {
         setIsLightboxOpen(false);
+      } else if (e.key === 'ArrowLeft') {
+        handlePrevImage();
+      } else if (e.key === 'ArrowRight') {
+        handleNextImage();
       }
     };
     if (isLightboxOpen) {
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLightboxOpen, images.length]);
+
+  // Prevent background scrolling when lightbox is open
+  useEffect(() => {
+    if (isLightboxOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
   }, [isLightboxOpen]);
+
+  // Touch handlers for mobile swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchEndX(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    const minSwipeDistance = 45;
+    if (distance > minSwipeDistance) {
+      handleNextImage();
+    } else if (distance < -minSwipeDistance) {
+      handlePrevImage();
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
 
   const category = categories.find((c) => c.id === product.categoryId);
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
@@ -86,17 +149,6 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     product.sku,
     personalizationText
   );
-
-  const images = product.images.length > 0 ? product.images : ['/assets/images/hero_creations_dubai_1794842125042.jpg'];
-  const activeImage = images[activeImageIndex] ?? images[0];
-
-  const handlePrevImage = () => {
-    setActiveImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  };
-
-  const handleNextImage = () => {
-    setActiveImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 pb-20 space-y-12 sm:space-y-16">
@@ -125,7 +177,13 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
         {/* Left: Product Gallery */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-white border border-[#0D1B35]/10 shadow-sm group">
+          <div
+            className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-white border border-[#0D1B35]/10 shadow-sm group cursor-zoom-in select-none"
+            onClick={() => setIsLightboxOpen(true)}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeImageIndex}
@@ -137,19 +195,29 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
               >
                 <SafeImage
                   src={activeImage}
-                  alt={`${product.name} — view ${activeImageIndex + 1}`}
+                  alt={`${product.name} — view ${activeImageIndex + 1} of ${images.length}`}
                   fallbackTitle={product.name}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                 />
               </motion.div>
             </AnimatePresence>
 
+            {/* Image Counter Badge on Main Image */}
+            {images.length > 1 && (
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-[#0D1B35]/75 backdrop-blur-md text-white text-xs font-mono font-medium shadow-xs pointer-events-none select-none">
+                {activeImageIndex + 1} / {images.length}
+              </div>
+            )}
+
             {/* Lightbox Trigger Button */}
             <motion.button
               type="button"
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
-              onClick={() => setIsLightboxOpen(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLightboxOpen(true);
+              }}
               aria-label="Open full-screen image viewer"
               className="absolute bottom-3 right-3 w-10 h-10 rounded-xl bg-white/90 backdrop-blur-sm border border-[#0D1B35]/10 text-[#0D1B35] hover:text-[#F45A00] inline-flex items-center justify-center shadow-xs transition-colors cursor-pointer"
             >
@@ -161,7 +229,10 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
               <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between pointer-events-none">
                 <button
                   type="button"
-                  onClick={handlePrevImage}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePrevImage();
+                  }}
                   aria-label="Previous image"
                   className="w-9 h-9 rounded-full bg-white/85 text-[#0D1B35] hover:bg-white inline-flex items-center justify-center shadow-sm pointer-events-auto transition-colors cursor-pointer"
                 >
@@ -169,7 +240,10 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={handleNextImage}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNextImage();
+                  }}
                   aria-label="Next image"
                   className="w-9 h-9 rounded-full bg-white/85 text-[#0D1B35] hover:bg-white inline-flex items-center justify-center shadow-sm pointer-events-auto transition-colors cursor-pointer"
                 >
@@ -179,9 +253,9 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             )}
           </div>
 
-          {/* Thumbnails Row */}
+          {/* Thumbnails Row: Horizontally scrollable on mobile without overflow, grid on sm */}
           {images.length > 1 && (
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3 overflow-x-auto pb-1.5 pt-0.5 scrollbar-none sm:grid sm:grid-cols-6 sm:overflow-visible">
               {images.map((img, idx) => (
                 <motion.button
                   key={`${img}-${idx}`}
@@ -189,11 +263,11 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setActiveImageIndex(idx)}
-                  aria-label={`Select angle ${idx + 1} of ${product.name}`}
-                  className={`aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                  aria-label={`Select angle ${idx + 1} of ${images.length} for ${product.name}`}
+                  className={`shrink-0 w-16 sm:w-auto aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all cursor-pointer relative ${
                     activeImageIndex === idx
-                      ? 'border-[#F45A00] ring-2 ring-[#F45A00]/20'
-                      : 'border-transparent hover:border-[#0D1B35]/20 opacity-80 hover:opacity-100'
+                      ? 'border-[#F45A00] ring-2 ring-[#F45A00]/30 shadow-xs'
+                      : 'border-[#0D1B35]/10 hover:border-[#0D1B35]/30 opacity-75 hover:opacity-100'
                   }`}
                 >
                   <SafeImage
@@ -506,10 +580,14 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-[#0D1B35]/95 backdrop-blur-md flex flex-col items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-[#0D1B35]/95 backdrop-blur-md flex flex-col items-center justify-between p-4 sm:p-6"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
-            <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-              <span className="text-xs text-white/70 font-mono">
+            {/* Lightbox Header Bar with Counter & Close Button */}
+            <div className="w-full max-w-5xl flex items-center justify-between z-10 py-2">
+              <span className="text-xs sm:text-sm text-white/80 font-mono font-medium tracking-wide">
                 {activeImageIndex + 1} / {images.length}
               </span>
               <button
@@ -522,18 +600,19 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
               </button>
             </div>
 
+            {/* Center Main High-Res Image with Prev / Next Navigation */}
             <motion.div
               initial={{ scale: 0.94, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.94, opacity: 0 }}
               transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-              className="relative max-w-4xl max-h-[80vh] w-full h-full flex items-center justify-center"
+              className="relative max-w-5xl max-h-[72vh] w-full flex-1 flex items-center justify-center my-auto"
             >
               <SafeImage
                 src={activeImage}
-                alt={`${product.name} high-resolution view`}
+                alt={`${product.name} high-resolution view ${activeImageIndex + 1} of ${images.length}`}
                 fallbackTitle={product.name}
-                className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+                className="max-w-full max-h-[72vh] object-contain rounded-xl shadow-2xl select-none"
               />
 
               {images.length > 1 && (
@@ -542,7 +621,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                     type="button"
                     onClick={handlePrevImage}
                     aria-label="Previous image"
-                    className="absolute left-2 sm:-left-12 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 hover:bg-white/30 text-white inline-flex items-center justify-center transition-colors cursor-pointer"
+                    className="absolute left-2 sm:-left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/20 hover:bg-white/35 text-white inline-flex items-center justify-center transition-colors cursor-pointer shadow-lg backdrop-blur-sm"
                   >
                     <ChevronLeftIcon className="w-6 h-6" />
                   </button>
@@ -550,13 +629,39 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                     type="button"
                     onClick={handleNextImage}
                     aria-label="Next image"
-                    className="absolute right-2 sm:-right-12 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 hover:bg-white/30 text-white inline-flex items-center justify-center transition-colors cursor-pointer"
+                    className="absolute right-2 sm:-right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/20 hover:bg-white/35 text-white inline-flex items-center justify-center transition-colors cursor-pointer shadow-lg backdrop-blur-sm"
                   >
                     <ChevronRightIcon className="w-6 h-6" />
                   </button>
                 </>
               )}
             </motion.div>
+
+            {/* Footer Thumbnails Strip inside Lightbox */}
+            {images.length > 1 && (
+              <div className="w-full max-w-2xl flex items-center justify-center gap-2 overflow-x-auto py-2 z-10 scrollbar-none">
+                {images.map((img, idx) => (
+                  <button
+                    key={`lb-${img}-${idx}`}
+                    type="button"
+                    onClick={() => setActiveImageIndex(idx)}
+                    aria-label={`Jump to view ${idx + 1} of ${images.length}`}
+                    className={`shrink-0 w-12 sm:w-14 aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                      activeImageIndex === idx
+                        ? 'border-[#F45A00] ring-2 ring-[#F45A00]/40 scale-105'
+                        : 'border-white/20 opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <SafeImage
+                      src={img}
+                      alt={`Thumbnail ${idx + 1}`}
+                      fallbackTitle={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

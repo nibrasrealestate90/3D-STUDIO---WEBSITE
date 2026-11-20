@@ -316,3 +316,69 @@ export function getCategoryDistribution(
     };
   });
 }
+
+/**
+ * Resolves, validates, and deduplicates product gallery images while preserving dashboard order.
+ * - Primary image (index 0) remains authoritative
+ * - Preserves exact image order from dashboard
+ * - Maintains backward compatibility with legacy products that only have imageUrl
+ * - If images[] is empty, falls back to imageUrl
+ * - Deduplicates identical image URLs
+ * - Filters out invalid, malformed, or dangerous scheme image URLs
+ */
+export function resolveProductImages(
+  images?: (string | null | undefined)[] | null,
+  imageUrl?: string | null
+): string[] {
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  const isValidUrl = (url: unknown): url is string => {
+    if (!url || typeof url !== 'string') return false;
+    const trimmed = url.trim();
+    if (trimmed.length === 0) return false;
+    const lower = trimmed.toLowerCase();
+    if (
+      lower.startsWith('javascript:') ||
+      lower.startsWith('data:') ||
+      lower.startsWith('vbscript:') ||
+      lower.startsWith('file:') ||
+      lower.startsWith('blob:') ||
+      lower.startsWith('about:')
+    ) {
+      return false;
+    }
+    // Allow https://, http://, and safe leading slash paths (no traversal)
+    if (lower.startsWith('https://') || lower.startsWith('http://')) {
+      return true;
+    }
+    if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.includes('..')) {
+      return true;
+    }
+    return false;
+  };
+
+  const addUrl = (url: unknown) => {
+    if (isValidUrl(url)) {
+      const clean = url.trim();
+      if (!seen.has(clean)) {
+        seen.add(clean);
+        result.push(clean);
+      }
+    }
+  };
+
+  // 1. Process images array preserving order
+  if (Array.isArray(images)) {
+    for (const img of images) {
+      addUrl(img);
+    }
+  }
+
+  // 2. Fall back to imageUrl if no valid images found, or ensure imageUrl is included
+  if (result.length === 0 && isValidUrl(imageUrl)) {
+    addUrl(imageUrl);
+  }
+
+  return result;
+}

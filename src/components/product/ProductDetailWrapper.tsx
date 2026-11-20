@@ -6,6 +6,7 @@ import { ArrowLeftIcon, PackageXIcon } from '@/components/ui/icons';
 import { ProductDetailClient } from './ProductDetailClient';
 import { getStorefrontProductBySlug } from '@/lib/api';
 import { INITIAL_PRODUCTS } from '@/lib/mockData';
+import { useStore } from '@/context/StoreContext';
 import type { Product } from '@/lib/types';
 
 interface ProductDetailWrapperProps {
@@ -14,6 +15,7 @@ interface ProductDetailWrapperProps {
 }
 
 export function ProductDetailWrapper({ initialProduct, slug }: ProductDetailWrapperProps) {
+  const { products } = useStore();
   const [product, setProduct] = useState<Product | null>(initialProduct);
   const [loading, setLoading] = useState(!initialProduct);
 
@@ -27,33 +29,42 @@ export function ProductDetailWrapper({ initialProduct, slug }: ProductDetailWrap
       }
     }
 
-    // If initialProduct already matches the resolved slug, nothing to fetch
-    if (initialProduct && initialProduct.slug === resolvedSlug) {
-      setProduct(initialProduct);
+    // Check if live products catalog in StoreContext already has fresh product details
+    const contextProduct = products.find((p) => p.slug === resolvedSlug);
+    if (contextProduct) {
+      setProduct(contextProduct);
       setLoading(false);
-      return;
     }
 
-    // Otherwise, fetch product by resolved slug from live API
-    setLoading(true);
+    // Always fetch latest product details from live API to ensure fresh multi-image gallery
+    let isCancelled = false;
     getStorefrontProductBySlug(resolvedSlug)
       .then((res) => {
+        if (isCancelled) return;
         if (res.product) {
           setProduct(res.product);
-        } else {
-          // Fallback to initial mock products if available
+        } else if (!product && !initialProduct && !contextProduct) {
           const localFallback = INITIAL_PRODUCTS.find((p) => p.slug === resolvedSlug);
           setProduct(localFallback || null);
         }
       })
       .catch(() => {
-        const localFallback = INITIAL_PRODUCTS.find((p) => p.slug === resolvedSlug);
-        setProduct(localFallback || null);
+        if (isCancelled) return;
+        if (!product && !initialProduct && !contextProduct) {
+          const localFallback = INITIAL_PRODUCTS.find((p) => p.slug === resolvedSlug);
+          setProduct(localFallback || null);
+        }
       })
       .finally(() => {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       });
-  }, [initialProduct, slug]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [slug, products]);
 
   if (loading) {
     return (
