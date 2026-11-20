@@ -16,13 +16,11 @@ export function EnquiryModal() {
   const { enquiryModalState, setEnquiryModalState, submitProductEnquiry } = useStore();
   const product = enquiryModalState.product;
   const initialQuantity = enquiryModalState.quantity || 1;
-  const initialColor = enquiryModalState.color;
 
   const [customerName, setCustomerName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [quantity, setQuantity] = useState(initialQuantity);
-  const [selectedColor, setSelectedColor] = useState(initialColor ?? '');
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submittedRef, setSubmittedRef] = useState<string | null>(null);
@@ -32,13 +30,12 @@ export function EnquiryModal() {
   useEffect(() => {
     if (product) {
       setQuantity(initialQuantity);
-      setSelectedColor(initialColor || product.colors[0] || 'Standard');
       setSubmittedRef(null);
       setErrors({});
       setServerError(null);
       setMessage(`Hello, I would like to inquire about availability and custom finishing for ${product.name}.`);
     }
-  }, [product, initialQuantity, initialColor]);
+  }, [product, initialQuantity]);
 
   if (!product) return null;
 
@@ -75,7 +72,6 @@ export function EnquiryModal() {
         productId: product.id,
         productName: product.name,
         quantity,
-        selectedColor,
         message: message.trim(),
       });
       setSubmittedRef(record.referenceCode);
@@ -107,7 +103,7 @@ export function EnquiryModal() {
                 Reference: <span className="font-mono">{submittedRef}</span>
               </p>
               <p className="text-sm text-[#737373] leading-relaxed">
-                Thank you! Your enquiry has been registered in our Dubai studio queue. For an immediate reply or to confirm color finishes, you can continue directly with our workshop team on WhatsApp.
+                Thank you! Your enquiry has been registered in our Dubai studio queue. For an immediate reply or to confirm order and delivery details, you can continue directly with our workshop team on WhatsApp.
               </p>
             </div>
           </div>
@@ -118,7 +114,7 @@ export function EnquiryModal() {
                 product.name,
                 effectivePrice,
                 quantity,
-                selectedColor,
+                undefined,
                 product.sku
               )}
               label="Continue on WhatsApp"
@@ -177,38 +173,20 @@ export function EnquiryModal() {
             </div>
           </div>
 
-          <div>
-            <label htmlFor="enq-email" className="block text-xs font-semibold text-[#0D1B35] mb-1.5">
-              Email Address *
-            </label>
-            <input
-              id="enq-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@example.com"
-              className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors"
-            />
-            {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="enq-color" className="block text-xs font-semibold text-[#0D1B35] mb-1.5">
-                Preferred Finish / Color
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2">
+              <label htmlFor="enq-email" className="block text-xs font-semibold text-[#0D1B35] mb-1.5">
+                Email Address *
               </label>
-              <select
-                id="enq-color"
-                value={selectedColor}
-                onChange={(e) => setSelectedColor(e.target.value)}
-                className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors"
-              >
-                {product.colors.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+              <input
+                id="enq-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors"
+              />
+              {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
             </div>
 
             <div>
@@ -236,7 +214,7 @@ export function EnquiryModal() {
               rows={3}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Include details about color finishes, custom text, or delivery requirements in Dubai..."
+              placeholder="Include details about custom requirements, sizing, or delivery in Dubai..."
               className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors resize-none"
             />
             {errors.message && <p className="text-xs text-red-600 mt-1">{errors.message}</p>}

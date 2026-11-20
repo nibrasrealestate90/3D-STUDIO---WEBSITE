@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CloseIcon,
@@ -39,7 +38,6 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const { products, categories, wishlistIds, toggleWishlist, setEnquiryModalState } = useStore();
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [personalizationText, setPersonalizationText] = useState('');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -55,7 +53,6 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
 
   useEffect(() => {
     if (product) {
-      setSelectedColor(product.colors[0] ?? 'Standard');
       setQuantity(1);
       setPersonalizationText('');
     }
@@ -145,7 +142,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     product.name,
     effectivePrice,
     quantity,
-    selectedColor,
+    undefined,
     product.sku,
     personalizationText
   );
@@ -344,38 +341,6 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             {product.description}
           </div>
 
-          {/* Color / Finish Selection */}
-          {product.colors.length > 0 && (
-            <div className="space-y-2.5 pt-2 border-t border-[#0D1B35]/10">
-              <span className="block text-xs font-semibold text-[#0D1B35]">
-                Select Finish / Color: <span className="text-[#963200] font-bold">{selectedColor}</span>
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {product.colors.map((color) => {
-                  const active = selectedColor === color;
-                  return (
-                    <motion.button
-                      key={color}
-                      type="button"
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.96 }}
-                      onClick={() => setSelectedColor(color)}
-                      aria-pressed={active}
-                      className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border cursor-pointer transition-colors ${
-                        active
-                          ? 'border-[#F45A00] bg-[#FCF2EC] text-[#0D1B35] ring-2 ring-[#F45A00]/20'
-                          : 'border-[#0D1B35]/15 bg-white text-[#525252] hover:border-[#0D1B35]/40'
-                      }`}
-                    >
-                      {active && <CheckIcon className="w-3.5 h-3.5 text-[#F45A00]" aria-hidden="true" />}
-                      <span>{color}</span>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Custom Personalization Input (only when supported) */}
           {product.supportsPersonalization && (
             <div className="space-y-1.5 pt-2 border-t border-[#0D1B35]/10">
@@ -452,7 +417,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
 
             <button
               type="button"
-              onClick={() => setEnquiryModalState({ product, quantity, color: selectedColor })}
+              onClick={() => setEnquiryModalState({ product, quantity })}
               className="w-full rounded-xl bg-[#0D1B35] hover:bg-[#F45A00] text-white px-5 py-3 text-sm font-semibold press-feedback cursor-pointer shadow-xs"
             >
               Submit Studio Enquiry

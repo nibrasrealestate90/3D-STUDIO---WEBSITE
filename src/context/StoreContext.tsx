@@ -243,7 +243,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           customerName: payload.customerName,
           customerEmail: payload.email,
           customerPhone: payload.phone,
-          subject: `Enquiry: ${payload.productName} (${payload.selectedColor || 'Standard'})`,
+          subject: payload.selectedColor
+            ? `Enquiry: ${payload.productName} (${payload.selectedColor})`
+            : `Enquiry: ${payload.productName}`,
           message: payload.message,
           productId: payload.productId,
         });
