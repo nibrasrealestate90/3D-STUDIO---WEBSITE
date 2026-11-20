@@ -109,7 +109,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>(initial.products);
   const [isCatalogLoading, setIsCatalogLoading] = useState<boolean>(true);
   const [isCatalogUnavailable, setIsCatalogUnavailable] = useState<boolean>(false);
-  const [categories] = useState<Category[]>(initial.categories);
+  const [categories, setCategories] = useState<Category[]>(initial.categories);
   const [enquiries, setEnquiries] = useState<CustomerEnquiry[]>(initial.enquiries);
   const [customRequests, setCustomRequests] = useState<CustomPrintRequest[]>(
     initial.customRequests
@@ -157,7 +157,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     getStorefrontContent()
       .then((res) => {
         if (mounted && res.isFromApi) {
-          setInstagramGallery(res.instagramGallery);
+          if (Array.isArray(res.instagramGallery)) {
+            setInstagramGallery(res.instagramGallery);
+          }
+          if (Array.isArray(res.categories)) {
+            setCategories(res.categories);
+          }
         }
       })
       .catch(() => {});

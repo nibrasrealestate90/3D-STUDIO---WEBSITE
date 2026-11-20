@@ -23,6 +23,8 @@ export interface Category {
   slug: string;
   description: string;
   image: string;
+  imageUrl?: string;
+  order?: number;
 }
 
 export interface Product {
@@ -137,7 +139,9 @@ export interface StorefrontProduct {
   sku: string;
   name: string;
   description: string;
+  categoryId?: string;
   category: string;
+  publicCategory?: string;
   sellingPrice: number;
   currency: string;
   weightGrams?: number;
@@ -166,6 +170,14 @@ export interface ContentResponse {
   success: boolean;
   count: number;
   instagramGallery: InstagramPost[];
+  categories?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    imageUrl: string;
+    order?: number;
+  }>;
   error?: string;
   message?: string;
 }

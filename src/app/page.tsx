@@ -128,72 +128,76 @@ export default function HomePage() {
       </section>
 
       {/* B. Category Showcase */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.45 }}
-          className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8"
-        >
-          <div>
-            <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#0D1B35]">
-              Shop by Category
-            </h2>
-            <p className="text-sm text-[#737373] mt-1">
-              Explore curated collections crafted for homes, desks, and thoughtful gifting.
-            </p>
-          </div>
-          <Link
-            href="/shop"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#963200] hover:text-[#0D1B35] whitespace-nowrap self-start sm:self-auto transition-colors"
+      {categories.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.45 }}
+            className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8"
           >
-            <span>View Full Catalogue</span>
-            <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
-          </Link>
-        </motion.div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
-          {categories.slice(0, 6).map((cat, idx) => (
-            <motion.div
-              key={cat.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.4, delay: idx * 0.06 }}
+            <div>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#0D1B35]">
+                Shop by Category
+              </h2>
+              <p className="text-sm text-[#737373] mt-1">
+                Explore curated collections crafted for homes, desks, and thoughtful gifting.
+              </p>
+            </div>
+            <Link
+              href="/shop"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#963200] hover:text-[#0D1B35] whitespace-nowrap self-start sm:self-auto transition-colors"
             >
-              <Link
-                href={`/shop?category=${cat.id}`}
-                className="group relative aspect-[4/3] rounded-2xl overflow-hidden bg-white border border-[#0D1B35]/10 text-left card-hover-elevate block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F45A00]"
+              <span>View Full Catalogue</span>
+              <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
+            </Link>
+          </motion.div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
+            {categories.map((cat, idx) => (
+              <motion.div
+                key={cat.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ duration: 0.4, delay: Math.min(idx * 0.05, 0.4) }}
               >
-                <SafeImage
-                  src={cat.image}
-                  alt={cat.name}
-                  fallbackTitle={cat.name}
-                  className="w-full h-full object-cover transition-transform duration-300 ease-[var(--ease-out)] group-hover:scale-[1.04]"
-                />
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 bg-gradient-to-t from-[#0D1B35]/90 via-[#0D1B35]/35 to-transparent"
-                />
-                <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-5 flex items-end justify-between gap-2 sm:gap-3">
-                  <div className="min-w-0">
-                    <h3 className="font-display text-base sm:text-lg font-bold text-white truncate">
-                      {cat.name}
-                    </h3>
-                    <p className="text-[11px] sm:text-xs text-[#FCF2EC]/85 mt-0.5 line-clamp-1 hidden sm:block">
-                      {cat.description}
-                    </p>
+                <Link
+                  href={`/shop?category=${cat.id}`}
+                  className="group relative aspect-[4/3] rounded-2xl overflow-hidden bg-white border border-[#0D1B35]/10 text-left card-hover-elevate block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F45A00]"
+                >
+                  <SafeImage
+                    src={cat.imageUrl || cat.image}
+                    alt={cat.name}
+                    fallbackTitle={cat.name}
+                    className="w-full h-full object-cover transition-transform duration-300 ease-[var(--ease-out)] group-hover:scale-[1.04]"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0 bg-gradient-to-t from-[#0D1B35]/90 via-[#0D1B35]/35 to-transparent"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-5 flex items-end justify-between gap-2 sm:gap-3">
+                    <div className="min-w-0">
+                      <h3 className="font-display text-base sm:text-lg font-bold text-white truncate">
+                        {cat.name}
+                      </h3>
+                      {cat.description && (
+                        <p className="text-[11px] sm:text-xs text-[#FCF2EC]/85 mt-0.5 line-clamp-1 hidden sm:block">
+                          {cat.description}
+                        </p>
+                      )}
+                    </div>
+                    <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/15 group-hover:bg-[#F45A00] text-white inline-flex items-center justify-center transition-colors shrink-0">
+                      <ArrowRightIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
+                    </span>
                   </div>
-                  <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/15 group-hover:bg-[#F45A00] text-white inline-flex items-center justify-center transition-colors shrink-0">
-                    <ArrowRightIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
-                  </span>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* C. Best Sellers */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

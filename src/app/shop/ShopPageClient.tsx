@@ -49,6 +49,7 @@ export function ShopPageClient() {
       ? 'All Creations'
       : categoryMap.get(selectedCategoryId) ||
         categories.find((c) => c.slug === selectedCategoryId)?.name ||
+        categories.find((c) => c.name.toLowerCase() === selectedCategoryId.toLowerCase())?.name ||
         'Catalogue';
 
   const hasActiveFilters =
@@ -179,7 +180,8 @@ export function ShopPageClient() {
             const isCatActive =
               selectedCategoryId === cat.id ||
               selectedCategoryId === cat.slug ||
-              selectedCategoryId.replace(/^cat-/, '') === cat.slug;
+              selectedCategoryId.replace(/^cat-/, '') === cat.slug ||
+              selectedCategoryId.toLowerCase() === cat.name.toLowerCase();
             return (
               <button
                 key={cat.id}

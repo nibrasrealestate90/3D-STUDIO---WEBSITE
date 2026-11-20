@@ -1,5 +1,6 @@
 import {
   Product,
+  Category,
   StorefrontProduct,
   ProductsResponse,
   SingleProductResponse,
@@ -11,6 +12,7 @@ import {
   ContentResponse,
 } from './types';
 import { resolveProductImages } from './storeLogic';
+import { INITIAL_CATEGORIES } from './mockData';
 
 /**
  * Resolves the storefront API base URL:
@@ -36,19 +38,45 @@ export const API_BASE_URL =
     : process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, '') ||
       'https://3d-printing-dashboard-peach.vercel.app';
 
-export function mapStorefrontProductToStoreProduct(sp: StorefrontProduct): Product {
+export function mapStorefrontProductToStoreProduct(sp: StorefrontProduct, dynamicCategories?: Category[]): Product {
   const categoryIdMap: Record<string, string> = {
     'home decor': 'cat-home-decor',
     'personalized gifts': 'cat-personalized-gifts',
     'keychains & accessories': 'cat-keychains',
+    'keychains & tags': 'cat-keychains',
     'desk accessories': 'cat-desk-accessories',
     'phone stands': 'cat-phone-stands',
+    'phone & tablet stands': 'cat-phone-stands',
     'corporate gifts': 'cat-corporate-gifts',
-    'custom prints': 'cat-home-decor',
+    'custom prints': 'cat-custom-prints',
   };
 
-  const catLower = (sp.category || '').toLowerCase();
-  const matchedCategoryId = categoryIdMap[catLower] || 'cat-desk-accessories';
+  const catLower = (sp.category || sp.publicCategory || '').trim().toLowerCase();
+
+  // 1. Stable categoryId where present
+  let matchedCategoryId = sp.categoryId?.trim() || '';
+
+  // 2. Case-insensitive category name matching for legacy records or missing categoryId
+  if (!matchedCategoryId) {
+    const categoriesPool = Array.isArray(dynamicCategories) && dynamicCategories.length > 0
+      ? dynamicCategories
+      : INITIAL_CATEGORIES;
+
+    const matched = categoriesPool.find(
+      (c) =>
+        c.name.trim().toLowerCase() === catLower ||
+        c.slug.trim().toLowerCase() === catLower ||
+        c.id.toLowerCase() === catLower
+    );
+
+    if (matched) {
+      matchedCategoryId = matched.id;
+    } else {
+      matchedCategoryId =
+        categoryIdMap[catLower] ||
+        (sp.category ? `cat-${sp.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : 'cat-desk-accessories');
+    }
+  }
 
   // Multi-image array resolution: strictly resolve valid URLs, preserve ordering, and deduplicate
   const resolvedImages = resolveProductImages(sp.images, sp.imageUrl);
@@ -111,7 +139,7 @@ export async function getStorefrontProducts(
 
     const data: ProductsResponse = await res.json();
     if (data.success && Array.isArray(data.products)) {
-      const apiProducts = data.products.map(mapStorefrontProductToStoreProduct);
+      const apiProducts = data.products.map((sp) => mapStorefrontProductToStoreProduct(sp));
       return { products: apiProducts, isFromApi: true, isUnavailable: false };
     }
 
@@ -122,11 +150,13 @@ export async function getStorefrontProducts(
 }
 
 /**
- * Fetch published website content (Instagram gallery, etc.) from GET /api/store/content
- * Production Fallback: Returns empty gallery if API is unreachable. Never injects fabricated posts.
+ * Fetch published website content (Instagram gallery, categories, etc.) from GET /api/store/content
+ * Production Fallback: Returns empty gallery and undefined categories if API is unreachable.
+ * Never injects fabricated posts.
  */
 export async function getStorefrontContent(): Promise<{
   instagramGallery: InstagramPost[];
+  categories?: Category[];
   isFromApi: boolean;
   isUnavailable: boolean;
 }> {
@@ -142,9 +172,29 @@ export async function getStorefrontContent(): Promise<{
 
     if (res.ok) {
       const data: ContentResponse = await res.json();
-      if (data.success && Array.isArray(data.instagramGallery)) {
-        return { instagramGallery: data.instagramGallery, isFromApi: true, isUnavailable: false };
+      const instagramGallery = Array.isArray(data.instagramGallery) ? data.instagramGallery : [];
+
+      let categories: Category[] | undefined = undefined;
+      if (Array.isArray(data.categories)) {
+        categories = data.categories
+          .filter((c: any) => c && typeof c.id === 'string' && typeof c.name === 'string')
+          .map((c: any) => ({
+            id: String(c.id),
+            name: String(c.name).trim(),
+            slug: String(c.slug || '').trim(),
+            description: String(c.description || '').trim(),
+            image: String(c.imageUrl || '').trim(),
+            imageUrl: String(c.imageUrl || '').trim(),
+            order: typeof c.order === 'number' ? c.order : 0,
+          }));
       }
+
+      return {
+        instagramGallery,
+        categories,
+        isFromApi: true,
+        isUnavailable: false,
+      };
     }
     return { instagramGallery: [], isFromApi: false, isUnavailable: true };
   } catch {
