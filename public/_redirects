@@ -1,3 +1,7 @@
 # Cloudflare Pages Redirects & Rewrites
 # Dynamic product routing is handled natively by functions/products/[slug].ts
 # which checks for pre-rendered static assets before falling back to /products/dynamic/
+
+# Custom Prints Canonical Redirects
+/custom/  /custom-print/  301
+/custom   /custom-print/  301

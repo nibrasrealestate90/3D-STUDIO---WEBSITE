@@ -188,12 +188,14 @@ export interface CustomPrintFormInput {
   whatsappNumber: string;
   projectName: string;
   projectDescription: string;
-  dimensions: string;
+  dimensions?: string;
   material: MaterialOption;
   color: string;
-  quantity: number;
-  budgetRangeAed: string;
-  requiredDate: string;
+  quantity: number | string;
+  budgetRangeAed?: string;
+  requiredDate?: string;
+  hasDesignFile?: string;
+  additionalNotes?: string;
 }
 
 export function isValidEmail(email: string): boolean {
@@ -278,25 +280,56 @@ export function validateCustomPrintForm(
 ): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  if (!input.fullName.trim()) {
+  const name = String(input.fullName || '').trim();
+  if (!name) {
     errors.fullName = 'Please enter your full name.';
+  } else if (name.length < 2) {
+    errors.fullName = 'Name must be at least 2 characters.';
+  } else if (name.length > 150) {
+    errors.fullName = 'Name cannot exceed 150 characters.';
   }
-  if (!input.email.trim()) {
+
+  const email = String(input.email || '').trim();
+  if (!email) {
     errors.email = 'Please enter your email address.';
-  } else if (!isValidEmail(input.email)) {
-    errors.email = 'Please enter a valid email address (e.g. name@domain.com).';
+  } else if (!isValidEmail(email) || email.length > 255) {
+    errors.email = 'Please enter a valid email address.';
   }
-  if (!input.whatsappNumber.trim() || input.whatsappNumber.replace(/[^0-9]/g, '').length < 7) {
-    errors.whatsappNumber = 'Please enter a valid WhatsApp or phone number.';
+
+  const phone = String(input.whatsappNumber || '').trim();
+  if (!phone) {
+    errors.whatsappNumber = 'Please enter your WhatsApp or phone number.';
+  } else if (!isValidPhoneNumber(phone)) {
+    errors.whatsappNumber = 'Please enter a valid phone number (7-15 digits).';
   }
-  if (!input.projectName.trim()) {
+
+  const project = String(input.projectName || '').trim();
+  if (!project) {
     errors.projectName = 'Please give your project a short name.';
+  } else if (project.length < 2) {
+    errors.projectName = 'Project name must be at least 2 characters.';
+  } else if (project.length > 150) {
+    errors.projectName = 'Project name cannot exceed 150 characters.';
   }
-  if (!input.projectDescription.trim() || input.projectDescription.trim().length < 15) {
+
+  const desc = String(input.projectDescription || '').trim();
+  if (!desc) {
     errors.projectDescription = 'Please describe your project (at least 15 characters).';
+  } else if (desc.length < 15) {
+    errors.projectDescription = 'Please describe your project (at least 15 characters).';
+  } else if (desc.length > 5000) {
+    errors.projectDescription = 'Description cannot exceed 5000 characters.';
   }
-  if (!Number.isFinite(input.quantity) || input.quantity < 1) {
-    errors.quantity = 'Quantity must be at least 1.';
+
+  const rawQty = input.quantity;
+  const qty =
+    typeof rawQty === 'number'
+      ? rawQty
+      : Number(String(rawQty || '').trim());
+  if (!Number.isFinite(qty) || !Number.isInteger(qty) || qty < 1) {
+    errors.quantity = 'Quantity must be a positive integer of at least 1.';
+  } else if (qty > 1000) {
+    errors.quantity = 'Quantity cannot exceed 1000 units.';
   }
 
   return errors;

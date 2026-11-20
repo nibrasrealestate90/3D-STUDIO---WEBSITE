@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertCircleIcon,
@@ -29,6 +29,12 @@ const MATERIALS: MaterialOption[] = [
 
 const COLORS = ['White', 'Black', 'Orange', 'Red', 'Blue', 'Custom Color'];
 
+const DESIGN_FILE_OPTIONS = [
+  'Yes, I have a ready 3D design',
+  'I have an image or reference',
+  'No, I need help with the design',
+];
+
 export function CustomPrintPageClient() {
   const { submitCustomPrintRequest, settings } = useStore();
 
@@ -37,12 +43,12 @@ export function CustomPrintPageClient() {
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
-  const [cadLink, setCadLink] = useState('');
+  const [hasDesignFile, setHasDesignFile] = useState(DESIGN_FILE_OPTIONS[0]);
   const [dimensions, setDimensions] = useState('');
   const [material, setMaterial] = useState<MaterialOption>('PLA');
   const [color, setColor] = useState('Orange');
   const [customColorText, setCustomColorText] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | string>(1);
   const [budgetRangeAed, setBudgetRangeAed] = useState('AED 200 – 500');
   const [requiredDate, setRequiredDate] = useState('');
   const [additionalNotes, setAdditionalNotes] = useState('');
@@ -52,14 +58,28 @@ export function CustomPrintPageClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const isSubmittingRef = useRef(false);
+
+  const handleFieldChange = (field: string) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmittingRef.current || isSubmitting) return;
 
     const resolvedColor =
       color === 'Custom Color' && customColorText.trim()
         ? `Custom: ${customColorText.trim()}`
         : color;
+
+    const parsedQty = typeof quantity === 'number' ? quantity : parseInt(String(quantity), 10) || 1;
 
     const validationErrors = validateCustomPrintForm({
       fullName,
@@ -70,43 +90,55 @@ export function CustomPrintPageClient() {
       dimensions,
       material,
       color: resolvedColor,
-      quantity,
+      quantity: parsedQty,
       budgetRangeAed,
       requiredDate,
+      hasDesignFile,
+      additionalNotes,
     });
 
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setServerError(null);
-    try {
-      const fullDesc = [
-        projectDescription.trim(),
-        cadLink.trim() ? `CAD/Cloud Link: ${cadLink.trim()}` : '',
-      ]
-        .filter(Boolean)
-        .join('\n\n');
 
+    try {
       const record = await submitCustomPrintRequest({
         fullName: fullName.trim(),
         email: email.trim(),
         whatsappNumber: whatsappNumber.trim(),
         projectName: projectName.trim(),
-        projectDescription: fullDesc,
+        projectDescription: projectDescription.trim(),
+        hasDesignFile,
         dimensions: dimensions.trim() || 'Standard Studio Sizing',
         material,
         color: resolvedColor,
-        quantity,
+        quantity: parsedQty,
         budgetRangeAed,
         requiredDate,
         additionalNotes: additionalNotes.trim(),
       });
       setSubmittedRef(record.referenceCode);
-    } catch (err) {
-      setServerError('Could not submit request over the network. You can discuss your project directly with our studio team on WhatsApp.');
+    } catch (err: any) {
+      if (err?.errors && typeof err.errors === 'object') {
+        const mappedErrors: Record<string, string> = {};
+        if (err.errors.customerName) mappedErrors.fullName = err.errors.customerName;
+        if (err.errors.customerEmail) mappedErrors.email = err.errors.customerEmail;
+        if (err.errors.customerPhone) mappedErrors.whatsappNumber = err.errors.customerPhone;
+        if (err.errors.projectTitle) mappedErrors.projectName = err.errors.projectTitle;
+        if (err.errors.projectDescription) mappedErrors.projectDescription = err.errors.projectDescription;
+        if (err.errors.quantity) mappedErrors.quantity = err.errors.quantity;
+        setErrors((prev) => ({ ...prev, ...mappedErrors }));
+      }
+      setServerError(
+        err?.message ||
+          'Could not submit quote request over the network. You can discuss your project directly with our studio team on WhatsApp.'
+      );
     } finally {
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -117,7 +149,7 @@ export function CustomPrintPageClient() {
     setWhatsappNumber('');
     setProjectName('');
     setProjectDescription('');
-    setCadLink('');
+    setHasDesignFile(DESIGN_FILE_OPTIONS[0]);
     setDimensions('');
     setMaterial('PLA');
     setColor('Orange');
@@ -140,7 +172,7 @@ export function CustomPrintPageClient() {
           Request a Custom 3D Print Quote
         </h1>
         <p className="text-base text-[#525252] leading-relaxed max-w-2xl [text-wrap:pretty]">
-          From personalized corporate gifting to mechanical prototypes, our Dubai studio transforms your 3D models into physical reality. Fill out your project brief below for an itemized pro-forma quote in AED.
+          From personalized corporate gifting to mechanical prototypes, our Dubai studio transforms your ideas into physical reality. Fill out your project brief below for an itemized pro-forma quote in AED.
         </p>
       </div>
 
@@ -163,9 +195,9 @@ export function CustomPrintPageClient() {
           <div className="border-l-2 border-[#F45A00] pl-4 text-left text-xs text-[#0D1B35] space-y-2 py-1">
             <p className="font-semibold text-sm text-[#0D1B35]">What happens next?</p>
             <ul className="space-y-1.5 list-disc pl-4 text-[#525252]">
-              <li>Our Dubai engineering team will review your model geometry, slicing orientation, and volume.</li>
+              <li>Our Dubai engineering team will review your project requirements and specifications.</li>
+              <li>Our studio team will contact you via WhatsApp or email to request your 3D design file (.STL, .STEP, .3MF, .OBJ) or reference images if needed.</li>
               <li>You will receive an itemized quote with material recommendations and lead time within 2 to 4 business hours.</li>
-              <li>If you have 3D files (.STL, .STEP, .3MF) to share, you can attach them directly to our studio WhatsApp.</li>
             </ul>
           </div>
 
@@ -198,9 +230,27 @@ export function CustomPrintPageClient() {
             className="lg:col-span-8 bg-white rounded-2xl border border-[#0D1B35]/10 p-6 sm:p-8 space-y-6 shadow-sm"
           >
             {serverError && (
-              <div className="flex items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-xs text-red-600">
-                <AlertCircleIcon className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{serverError}</span>
+              <div
+                role="alert"
+                className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 space-y-2.5"
+              >
+                <div className="flex items-start gap-2.5 text-xs text-red-700">
+                  <AlertCircleIcon className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+                  <div className="space-y-1">
+                    <p className="font-semibold">{serverError}</p>
+                    <p className="text-[11px] text-red-600/90 leading-normal">
+                      Your entered details are preserved below. You can adjust your information and retry, or reach out to us directly on WhatsApp.
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-1">
+                  <WhatsAppButton
+                    message={buildCustomPrintWhatsAppMessage(projectName)}
+                    label="Connect via WhatsApp Instead"
+                    variant="whatsapp"
+                    className="w-full text-xs py-2 justify-center"
+                  />
+                </div>
               </div>
             )}
 
@@ -219,12 +269,23 @@ export function CustomPrintPageClient() {
                     id="cp-name"
                     type="text"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      handleFieldChange('fullName');
+                    }}
+                    aria-invalid={Boolean(errors.fullName)}
+                    aria-describedby={errors.fullName ? 'cp-name-error' : undefined}
                     placeholder="e.g. Tariq Al Maktoum"
-                    className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors"
+                    className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:bg-white focus:outline-none transition-colors ${
+                      errors.fullName
+                        ? 'border-red-500 bg-red-50/50 focus:border-red-500'
+                        : 'border-[#0D1B35]/15 bg-[#FCF2EC]/40 focus:border-[#F45A00]'
+                    }`}
                   />
                   {errors.fullName && (
-                    <p className="text-xs text-red-600 mt-1">{errors.fullName}</p>
+                    <p id="cp-name-error" role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                      {errors.fullName}
+                    </p>
                   )}
                 </div>
 
@@ -236,12 +297,23 @@ export function CustomPrintPageClient() {
                     id="cp-email"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      handleFieldChange('email');
+                    }}
+                    aria-invalid={Boolean(errors.email)}
+                    aria-describedby={errors.email ? 'cp-email-error' : undefined}
                     placeholder="name@company.ae"
-                    className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors"
+                    className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:bg-white focus:outline-none transition-colors ${
+                      errors.email
+                        ? 'border-red-500 bg-red-50/50 focus:border-red-500'
+                        : 'border-[#0D1B35]/15 bg-[#FCF2EC]/40 focus:border-[#F45A00]'
+                    }`}
                   />
                   {errors.email && (
-                    <p className="text-xs text-red-600 mt-1">{errors.email}</p>
+                    <p id="cp-email-error" role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                      {errors.email}
+                    </p>
                   )}
                 </div>
               </div>
@@ -254,20 +326,31 @@ export function CustomPrintPageClient() {
                   id="cp-whatsapp"
                   type="tel"
                   value={whatsappNumber}
-                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  onChange={(e) => {
+                    setWhatsappNumber(e.target.value);
+                    handleFieldChange('whatsappNumber');
+                  }}
+                  aria-invalid={Boolean(errors.whatsappNumber)}
+                  aria-describedby={errors.whatsappNumber ? 'cp-whatsapp-error' : undefined}
                   placeholder="+971 50 000 0000"
-                  className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors"
+                  className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:bg-white focus:outline-none transition-colors ${
+                    errors.whatsappNumber
+                      ? 'border-red-500 bg-red-50/50 focus:border-red-500'
+                      : 'border-[#0D1B35]/15 bg-[#FCF2EC]/40 focus:border-[#F45A00]'
+                  }`}
                 />
                 {errors.whatsappNumber && (
-                  <p className="text-xs text-red-600 mt-1">{errors.whatsappNumber}</p>
+                  <p id="cp-whatsapp-error" role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                    {errors.whatsappNumber}
+                  </p>
                 )}
               </div>
             </div>
 
-            {/* 2. Project Details & CAD Sharing */}
+            {/* 2. Project Details & 3D Design */}
             <div className="space-y-4">
               <h2 className="font-display text-lg font-bold text-[#0D1B35] pb-2 border-b border-[#0D1B35]/10">
-                2. Project Brief &amp; 3D File
+                2. Project Brief &amp; 3D Design
               </h2>
 
               <div>
@@ -278,12 +361,23 @@ export function CustomPrintPageClient() {
                   id="cp-project"
                   type="text"
                   value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
+                  onChange={(e) => {
+                    setProjectName(e.target.value);
+                    handleFieldChange('projectName');
+                  }}
+                  aria-invalid={Boolean(errors.projectName)}
+                  aria-describedby={errors.projectName ? 'cp-project-error' : undefined}
                   placeholder="e.g. Sensor Enclosure Prototype Rev B or Bespoke Trophy"
-                  className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors"
+                  className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:bg-white focus:outline-none transition-colors ${
+                    errors.projectName
+                      ? 'border-red-500 bg-red-50/50 focus:border-red-500'
+                      : 'border-[#0D1B35]/15 bg-[#FCF2EC]/40 focus:border-[#F45A00]'
+                  }`}
                 />
                 {errors.projectName && (
-                  <p className="text-xs text-red-600 mt-1">{errors.projectName}</p>
+                  <p id="cp-project-error" role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                    {errors.projectName}
+                  </p>
                 )}
               </div>
 
@@ -295,41 +389,63 @@ export function CustomPrintPageClient() {
                   id="cp-desc"
                   rows={4}
                   value={projectDescription}
-                  onChange={(e) => setProjectDescription(e.target.value)}
+                  onChange={(e) => {
+                    setProjectDescription(e.target.value);
+                    handleFieldChange('projectDescription');
+                  }}
+                  aria-invalid={Boolean(errors.projectDescription)}
+                  aria-describedby={errors.projectDescription ? 'cp-desc-error' : undefined}
                   placeholder="Describe your design, mechanical expectations, surface finish, structural loading, or intended environment (indoor/outdoor)..."
-                  className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors resize-none"
+                  className={`w-full rounded-xl border px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:bg-white focus:outline-none transition-colors resize-none ${
+                    errors.projectDescription
+                      ? 'border-red-500 bg-red-50/50 focus:border-red-500'
+                      : 'border-[#0D1B35]/15 bg-[#FCF2EC]/40 focus:border-[#F45A00]'
+                  }`}
                 />
                 {errors.projectDescription && (
-                  <p className="text-xs text-red-600 mt-1">{errors.projectDescription}</p>
+                  <p id="cp-desc-error" role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                    {errors.projectDescription}
+                  </p>
                 )}
               </div>
 
-              {/* Secure CAD File Sharing Alternative Container */}
-              <div className="rounded-2xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 p-4 sm:p-5 space-y-3">
-                <div className="flex items-start gap-3">
-                  <FileIcon className="w-5 h-5 text-[#F45A00] shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#0D1B35]">
-                      CAD Model &amp; File Sharing
-                    </h3>
-                    <p className="text-xs text-[#737373] leading-relaxed">
-                      To protect private CAD assets with maximum confidentiality, provide a secure cloud link below (Google Drive, WeTransfer, OneDrive, or Onshape), or share your <span className="font-mono font-semibold text-[#0D1B35]">.STL, .STEP, or .3MF</span> file directly to our engineers on WhatsApp after submitting.
-                    </p>
-                  </div>
+              {/* Design File Status Selector */}
+              <div className="space-y-2">
+                <span className="block text-xs font-semibold text-[#0D1B35]">
+                  Do you already have a 3D design file? (Optional)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {DESIGN_FILE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setHasDesignFile(opt)}
+                      aria-pressed={hasDesignFile === opt}
+                      className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border text-left transition-all press-feedback cursor-pointer ${
+                        hasDesignFile === opt
+                          ? 'border-[#F45A00] bg-[#F45A00] text-white shadow-xs'
+                          : 'border-[#0D1B35]/15 bg-white text-[#0D1B35] hover:border-[#0D1B35]/30'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                <div>
-                  <label htmlFor="cp-cad-link" className="block text-xs font-semibold text-[#0D1B35] mb-1.5">
-                    Cloud Download / Viewer Link (Optional)
-                  </label>
-                  <input
-                    id="cp-cad-link"
-                    type="url"
-                    value={cadLink}
-                    onChange={(e) => setCadLink(e.target.value)}
-                    placeholder="https://wetransfer.com/... or https://drive.google.com/..."
-                    className="w-full rounded-xl border border-[#0D1B35]/15 bg-white px-3.5 py-2.5 text-sm text-[#0D1B35] placeholder:text-[#737373] focus:border-[#F45A00] focus:outline-none transition-colors"
-                  />
+              {/* Professional CAD Sharing Guidance */}
+              <div className="rounded-2xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 p-4 sm:p-5 flex items-start gap-3.5">
+                <FileIcon className="w-5 h-5 text-[#F45A00] shrink-0 mt-0.5" aria-hidden="true" />
+                <div className="space-y-1">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#0D1B35]">
+                    Have a 3D design file?
+                  </h3>
+                  <p className="text-xs text-[#525252] leading-relaxed">
+                    That&apos;s great! Submit your project details first. Our studio team will contact you via WhatsApp or email and guide you through securely sharing your STL, STEP, 3MF or OBJ file.
+                  </p>
+                  <p className="text-[11px] font-medium text-[#963200] pt-0.5">
+                    No file upload is required to submit your enquiry.
+                  </p>
                 </div>
               </div>
             </div>
@@ -418,11 +534,23 @@ export function CustomPrintPageClient() {
                     min={1}
                     max={1000}
                     value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
-                    className="w-full rounded-xl border border-[#0D1B35]/15 bg-[#FCF2EC]/40 px-3.5 py-2.5 text-sm tabular-nums text-[#0D1B35] focus:border-[#F45A00] focus:bg-white focus:outline-none transition-colors"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setQuantity(val === '' ? '' : parseInt(val, 10));
+                      handleFieldChange('quantity');
+                    }}
+                    aria-invalid={Boolean(errors.quantity)}
+                    aria-describedby={errors.quantity ? 'cp-qty-error' : undefined}
+                    className={`w-full rounded-xl border px-3.5 py-2.5 text-sm tabular-nums text-[#0D1B35] focus:bg-white focus:outline-none transition-colors ${
+                      errors.quantity
+                        ? 'border-red-500 bg-red-50/50 focus:border-red-500'
+                        : 'border-[#0D1B35]/15 bg-[#FCF2EC]/40 focus:border-[#F45A00]'
+                    }`}
                   />
                   {errors.quantity && (
-                    <p className="text-xs text-red-600 mt-1">{errors.quantity}</p>
+                    <p id="cp-qty-error" role="alert" className="text-xs text-red-600 mt-1 font-medium">
+                      {errors.quantity}
+                    </p>
                   )}
                 </div>
 

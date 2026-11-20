@@ -279,53 +279,59 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         'id' | 'referenceCode' | 'status' | 'internalNotes' | 'createdAt'
       >
     ) => {
+      const descParts = [
+        payload.projectDescription,
+        payload.hasDesignFile ? `3D Design File: ${payload.hasDesignFile}` : '',
+        payload.dimensions ? `Dimensions: ${payload.dimensions}` : '',
+        payload.budgetRangeAed ? `Budget: ${payload.budgetRangeAed}` : '',
+        payload.additionalNotes ? `Notes: ${payload.additionalNotes}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const cleanDeadline = /^\d{4}-\d{2}-\d{2}$/.test(payload.requiredDate?.trim() || '')
+        ? payload.requiredDate.trim()
+        : undefined;
+
+      const apiRes = await submitQuoteRequest({
+        customerName: payload.fullName,
+        customerEmail: payload.email,
+        customerPhone: payload.whatsappNumber,
+        projectTitle: payload.projectName,
+        projectDescription: descParts,
+        materialPreference: payload.material,
+        colorPreference: payload.color,
+        quantity: payload.quantity,
+        targetDeadline: cleanDeadline,
+      });
+
+      if (!apiRes.success) {
+        const error = new Error(apiRes.message || 'Quote request submission failed.') as Error & {
+          code?: string;
+          errors?: Record<string, string>;
+        };
+        error.code = apiRes.error;
+        error.errors = apiRes.errors;
+        throw error;
+      }
+
+      const referenceCode =
+        apiRes.rfqReference ||
+        (apiRes.quoteRequestId ? `RFQ-${apiRes.quoteRequestId}` : generateReferenceCode('LC-CUSTOM'));
+
       const newReq: CustomPrintRequest = {
         ...payload,
-        id: `req-${Date.now()}`,
-        referenceCode: generateReferenceCode('LC-CUSTOM'),
+        id: apiRes.quoteRequestId ? `req-${apiRes.quoteRequestId}` : `req-${Date.now()}`,
+        referenceCode,
         status: 'New',
         internalNotes: '',
         createdAt: new Date().toISOString(),
       };
       setCustomRequests((prev) => [newReq, ...prev]);
 
-      // Fire to Dashboard API
-      try {
-        const descParts = [
-          payload.projectDescription,
-          payload.dimensions ? `Dimensions: ${payload.dimensions}` : '',
-          payload.budgetRangeAed ? `Budget: ${payload.budgetRangeAed}` : '',
-          payload.additionalNotes ? `Notes: ${payload.additionalNotes}` : '',
-          payload.uploadedFile?.name ? `CAD File Reference: ${payload.uploadedFile.name}` : '',
-        ]
-          .filter(Boolean)
-          .join('\n');
-
-        const cleanDeadline = /^\d{4}-\d{2}-\d{2}$/.test(payload.requiredDate?.trim() || '')
-          ? payload.requiredDate.trim()
-          : undefined;
-
-        const apiRes = await submitQuoteRequest({
-          customerName: payload.fullName,
-          customerEmail: payload.email,
-          customerPhone: payload.whatsappNumber,
-          projectTitle: payload.projectName,
-          projectDescription: descParts,
-          materialPreference: payload.material,
-          colorPreference: payload.color,
-          quantity: payload.quantity,
-          targetDeadline: cleanDeadline,
-        });
-        if (apiRes.rfqReference) {
-          newReq.referenceCode = apiRes.rfqReference;
-        }
-      } catch (e) {
-        // Fallback already saved locally
-      }
-
       pushToast(
-        'Custom print request recorded',
-        `Reference ${newReq.referenceCode} saved.`
+        'Quote request received',
+        `Reference ${newReq.referenceCode} confirmed.`
       );
       return newReq;
     },

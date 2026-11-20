@@ -84,6 +84,7 @@ export interface CustomPrintRequest {
   whatsappNumber: string;
   projectName: string;
   projectDescription: string;
+  hasDesignFile?: string;
   uploadedFile?: UploadedFileMeta;
   dimensions: string;
   material: MaterialOption;

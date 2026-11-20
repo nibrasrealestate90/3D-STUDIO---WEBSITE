@@ -5,7 +5,10 @@ import CustomPrintPageClient from '../custom-print/CustomPrintPageClient';
 export const metadata: Metadata = {
   title: 'Custom 3D Printing & Prototyping — 3D Studio Dubai',
   description:
-    'Upload your 3D CAD files (.STL, .OBJ, .3MF, .STEP) for custom additive manufacturing, prototyping, and bespoke gifts in Dubai, UAE.',
+    'Request custom 3D printing and rapid prototyping for functional parts, architectural models, and bespoke gifts in Dubai, UAE.',
+  alternates: {
+    canonical: '/custom-print/',
+  },
 };
 
 export default function CustomPage() {
