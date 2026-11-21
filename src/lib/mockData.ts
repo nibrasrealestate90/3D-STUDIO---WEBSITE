@@ -14,17 +14,24 @@ export const STUDIO_LOGO_IMAGE = '/assets/aistudio/image_2d82fc9e.png';
 
 const envWa = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.trim();
 
+function formatWaNumber(raw?: string): string {
+  if (!raw) return '+971 50 468 1889';
+  const digits = raw.replace(/[^0-9]/g, '');
+  if (digits === '971504681889') return '+971 50 468 1889';
+  return raw.startsWith('+') ? raw : `+${raw}`;
+}
+
 export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   storeName: '3D Studio',
   tagline: 'Custom 3D Printed Creations in Dubai',
-  whatsappNumber: envWa ? (envWa.startsWith('+') ? envWa : `+${envWa}`) : '+971 50 123 4567',
-  isPlaceholderWhatsapp: !envWa,
-  instagramUrl: process.env.NEXT_PUBLIC_INSTAGRAM_URL || 'https://instagram.com/3dstudio.dubai',
-  instagramHandle: process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE || '@3dstudio.dubai',
+  whatsappNumber: formatWaNumber(envWa),
+  isPlaceholderWhatsapp: false,
+  instagramUrl: process.env.NEXT_PUBLIC_INSTAGRAM_URL || 'https://instagram.com/3dstudio_dubai',
+  instagramHandle: process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE || '@3dstudio_dubai',
   storeLocation: process.env.NEXT_PUBLIC_STUDIO_LOCATION || 'Dubai, UAE',
   currency: 'AED',
   businessHours: 'Mon – Sat · 9:00 AM – 7:00 PM GST',
-  contactEmail: process.env.NEXT_PUBLIC_STUDIO_EMAIL || 'hello@3dstudio.ae',
+  contactEmail: process.env.NEXT_PUBLIC_STUDIO_EMAIL || 'info@nibrasre.com',
   logoStyle: 'geometric',
 };
 

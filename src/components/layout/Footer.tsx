@@ -14,6 +14,13 @@ export function Footer() {
     `Hello ${settings.storeName}! I found your Dubai 3D printing website and would like to get in touch.`
   );
 
+  const instagramHandle = settings.instagramHandle.startsWith('@')
+    ? settings.instagramHandle
+    : `@${settings.instagramHandle}`;
+  const instagramUrl =
+    settings.instagramUrl ||
+    `https://instagram.com/${settings.instagramHandle.replace(/^@/, '')}`;
+
   return (
     <footer className="bg-[#0D1B35] text-[#FCF2EC] border-t border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -111,13 +118,13 @@ export function Footer() {
                 <span>{settings.contactEmail}</span>
               </a>
               <a
-                href={settings.instagramUrl}
+                href={instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-sm text-[#FCE3CB] hover:text-[#E1306C] transition-colors"
               >
                 <InstagramIcon className="w-4 h-4 text-[#E1306C]" />
-                <span>{settings.instagramHandle}</span>
+                <span>{instagramHandle}</span>
               </a>
             </div>
           </div>

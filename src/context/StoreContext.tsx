@@ -85,9 +85,7 @@ function loadInitialStoreState(): PersistedStoreState {
           customRequests: Array.isArray(parsed.customRequests)
             ? parsed.customRequests
             : INITIAL_CUSTOM_REQUESTS,
-          settings: parsed.settings
-            ? { ...DEFAULT_STORE_SETTINGS, ...parsed.settings }
-            : DEFAULT_STORE_SETTINGS,
+          settings: DEFAULT_STORE_SETTINGS,
           wishlistIds: Array.isArray(parsed.wishlistIds) ? parsed.wishlistIds : [],
         };
       }

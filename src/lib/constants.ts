@@ -11,10 +11,10 @@ export const BRAND_CONFIG = {
   city: 'Dubai',
   country: 'United Arab Emirates',
   location: process.env.NEXT_PUBLIC_STUDIO_LOCATION || 'Dubai Industrial City, Dubai, UAE',
-  email: process.env.NEXT_PUBLIC_STUDIO_EMAIL || 'hello@printstudio.ae',
-  phone: process.env.NEXT_PUBLIC_STUDIO_PHONE || '+971 4 123 4567',
-  whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '971501234567',
-  instagramHandle: process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE || 'printstudio.ae',
+  email: process.env.NEXT_PUBLIC_STUDIO_EMAIL || 'info@nibrasre.com',
+  phone: process.env.NEXT_PUBLIC_STUDIO_PHONE || '+971 50 468 1889',
+  whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '971504681889',
+  instagramHandle: process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE || '3dstudio_dubai',
   turnaroundTime: '24-48 Hours Express Delivery across UAE',
 };
 
