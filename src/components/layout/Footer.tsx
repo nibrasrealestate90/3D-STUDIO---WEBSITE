@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ChevronRightIcon, ClockIcon, InstagramIcon, MailIcon, MapPinIcon } from '@/components/ui/icons';
+import { ClockIcon, InstagramIcon, MailIcon, MapPinIcon } from '@/components/ui/icons';
 import { WhatsAppIcon } from '../ui/WhatsAppButton';
 import { useStore } from '@/context/StoreContext';
 import { buildWhatsAppUrl } from '@/lib/storeLogic';
@@ -108,78 +108,37 @@ export function Footer() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 pt-1">
-              {/* WhatsApp */}
+            {/* Minimal Social & Contact Logos */}
+            <div className="flex items-center gap-3 pt-1">
               <a
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`Chat on WhatsApp: ${settings.whatsappNumber}`}
-                className="group flex items-center gap-3 p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-[#25D366]/40 transition-all duration-200"
+                aria-label={`WhatsApp: ${settings.whatsappNumber}`}
+                title={`WhatsApp: ${settings.whatsappNumber}`}
+                className="w-10 h-10 rounded-xl bg-[#25D366] text-white flex items-center justify-center shadow-xs hover:scale-110 active:scale-95 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25D366]"
               >
-                <div className="w-8 h-8 rounded-lg bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                  <WhatsAppIcon className="w-4 h-4 shrink-0" bubbleFill="#FFFFFF" glyphFill="#25D366" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#FCF2EC]/55 group-hover:text-[#25D366] transition-colors">
-                    WhatsApp Chat
-                  </span>
-                  <span className="block text-xs sm:text-sm font-medium text-[#FCF2EC] group-hover:text-white transition-colors truncate">
-                    {settings.whatsappNumber}
-                  </span>
-                </div>
-                <ChevronRightIcon
-                  className="w-3.5 h-3.5 text-[#FCF2EC]/25 group-hover:text-[#FCF2EC]/80 group-hover:translate-x-0.5 transition-all shrink-0 ml-auto"
-                  aria-hidden="true"
-                />
+                <WhatsAppIcon className="w-5 h-5 shrink-0" bubbleFill="#FFFFFF" glyphFill="#25D366" />
               </a>
 
-              {/* Email */}
-              <a
-                href={`mailto:${settings.contactEmail}`}
-                aria-label={`Email Studio: ${settings.contactEmail}`}
-                className="group flex items-center gap-3 p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-[#F45A00]/40 transition-all duration-200"
-              >
-                <div className="w-8 h-8 rounded-lg bg-[#F45A00] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                  <MailIcon className="w-4 h-4 text-white" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#FCF2EC]/55 group-hover:text-[#F45A00] transition-colors">
-                    Studio Email
-                  </span>
-                  <span className="block text-xs sm:text-sm font-medium text-[#FCF2EC] group-hover:text-white transition-colors truncate">
-                    {settings.contactEmail}
-                  </span>
-                </div>
-                <ChevronRightIcon
-                  className="w-3.5 h-3.5 text-[#FCF2EC]/25 group-hover:text-[#FCF2EC]/80 group-hover:translate-x-0.5 transition-all shrink-0 ml-auto"
-                  aria-hidden="true"
-                />
-              </a>
-
-              {/* Instagram */}
               <a
                 href={instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`Follow on Instagram: ${instagramHandle}`}
-                className="group flex items-center gap-3 p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-[#E1306C]/40 transition-all duration-200"
+                aria-label={`Instagram: ${instagramHandle}`}
+                title={`Instagram: ${instagramHandle}`}
+                className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#c13584] via-[#e1306c] to-[#fd1d1d] text-white flex items-center justify-center shadow-xs hover:scale-110 active:scale-95 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E1306C]"
               >
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#c13584] via-[#e1306c] to-[#fd1d1d] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                  <InstagramIcon className="w-4 h-4 text-white" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#FCF2EC]/55 group-hover:text-[#E1306C] transition-colors">
-                    Instagram
-                  </span>
-                  <span className="block text-xs sm:text-sm font-medium text-[#FCF2EC] group-hover:text-white transition-colors truncate">
-                    {instagramHandle}
-                  </span>
-                </div>
-                <ChevronRightIcon
-                  className="w-3.5 h-3.5 text-[#FCF2EC]/25 group-hover:text-[#FCF2EC]/80 group-hover:translate-x-0.5 transition-all shrink-0 ml-auto"
-                  aria-hidden="true"
-                />
+                <InstagramIcon className="w-5 h-5 text-white" />
+              </a>
+
+              <a
+                href={`mailto:${settings.contactEmail}`}
+                aria-label={`Email: ${settings.contactEmail}`}
+                title={`Email: ${settings.contactEmail}`}
+                className="w-10 h-10 rounded-xl bg-[#F45A00] text-white flex items-center justify-center shadow-xs hover:scale-110 active:scale-95 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F45A00]"
+              >
+                <MailIcon className="w-5 h-5 text-white" />
               </a>
             </div>
           </div>
