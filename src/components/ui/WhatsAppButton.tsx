@@ -94,18 +94,8 @@ export function WhatsAppButton({
 
   const sizeClasses = variant === 'compact' ? '' : 'px-5 py-3 text-sm';
 
-  const isFullWidth = className.includes('w-full');
-
   return (
-    <div
-      className={
-        showPlaceholderNote
-          ? 'flex flex-col gap-1.5 w-full'
-          : isFullWidth
-          ? 'flex w-full'
-          : 'inline-flex'
-      }
-    >
+    <div className={showPlaceholderNote ? 'flex flex-col gap-1.5' : 'inline-flex'}>
       <a
         href={href}
         target="_blank"
