@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { InstagramIcon, MapPinIcon, MessageCircleIcon } from '@/components/ui/icons';
+import { ChevronRightIcon, ClockIcon, InstagramIcon, MailIcon, MapPinIcon } from '@/components/ui/icons';
+import { WhatsAppIcon } from '../ui/WhatsAppButton';
 import { useStore } from '@/context/StoreContext';
 import { buildWhatsAppUrl } from '@/lib/storeLogic';
 import { BrandLogo } from '../ui/BrandLogo';
@@ -97,34 +98,88 @@ export function Footer() {
 
           {/* Col 4: Contact & Social */}
           <div className="space-y-4">
-            <h3 className="font-display text-sm font-semibold text-white">
-              Connect &amp; Studio Hours
-            </h3>
-            <p className="text-xs text-[#FCF2EC]/70">{settings.businessHours}</p>
-            <div className="flex flex-col gap-2.5">
+            <div>
+              <h3 className="font-display text-sm font-semibold text-white tracking-wide">
+                Connect &amp; Studio Hours
+              </h3>
+              <div className="flex items-center gap-2 mt-2 text-xs text-[#FCF2EC]/75">
+                <ClockIcon className="w-3.5 h-3.5 text-[#F45A00] shrink-0" aria-hidden="true" />
+                <span>{settings.businessHours}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-1">
+              {/* WhatsApp */}
               <a
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-[#FCE3CB] hover:text-[#F45A00] transition-colors"
+                aria-label={`Chat on WhatsApp: ${settings.whatsappNumber}`}
+                className="group flex items-center gap-3 p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-[#25D366]/40 transition-all duration-200"
               >
-                <MessageCircleIcon className="w-4 h-4 text-[#25D366]" aria-hidden="true" />
-                <span>WhatsApp: {settings.whatsappNumber}</span>
+                <div className="w-8 h-8 rounded-lg bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <WhatsAppIcon className="w-4 h-4 shrink-0" bubbleFill="#FFFFFF" glyphFill="#25D366" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#FCF2EC]/55 group-hover:text-[#25D366] transition-colors">
+                    WhatsApp Chat
+                  </span>
+                  <span className="block text-xs sm:text-sm font-medium text-[#FCF2EC] group-hover:text-white transition-colors truncate">
+                    {settings.whatsappNumber}
+                  </span>
+                </div>
+                <ChevronRightIcon
+                  className="w-3.5 h-3.5 text-[#FCF2EC]/25 group-hover:text-[#FCF2EC]/80 group-hover:translate-x-0.5 transition-all shrink-0 ml-auto"
+                  aria-hidden="true"
+                />
               </a>
+
+              {/* Email */}
               <a
                 href={`mailto:${settings.contactEmail}`}
-                className="inline-flex items-center gap-2 text-sm text-[#FCE3CB] hover:text-[#F45A00] transition-colors"
+                aria-label={`Email Studio: ${settings.contactEmail}`}
+                className="group flex items-center gap-3 p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-[#F45A00]/40 transition-all duration-200"
               >
-                <span>{settings.contactEmail}</span>
+                <div className="w-8 h-8 rounded-lg bg-[#F45A00] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <MailIcon className="w-4 h-4 text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#FCF2EC]/55 group-hover:text-[#F45A00] transition-colors">
+                    Studio Email
+                  </span>
+                  <span className="block text-xs sm:text-sm font-medium text-[#FCF2EC] group-hover:text-white transition-colors truncate">
+                    {settings.contactEmail}
+                  </span>
+                </div>
+                <ChevronRightIcon
+                  className="w-3.5 h-3.5 text-[#FCF2EC]/25 group-hover:text-[#FCF2EC]/80 group-hover:translate-x-0.5 transition-all shrink-0 ml-auto"
+                  aria-hidden="true"
+                />
               </a>
+
+              {/* Instagram */}
               <a
                 href={instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-[#FCE3CB] hover:text-[#E1306C] transition-colors"
+                aria-label={`Follow on Instagram: ${instagramHandle}`}
+                className="group flex items-center gap-3 p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-[#E1306C]/40 transition-all duration-200"
               >
-                <InstagramIcon className="w-4 h-4 text-[#E1306C]" />
-                <span>{instagramHandle}</span>
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#c13584] via-[#e1306c] to-[#fd1d1d] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                  <InstagramIcon className="w-4 h-4 text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#FCF2EC]/55 group-hover:text-[#E1306C] transition-colors">
+                    Instagram
+                  </span>
+                  <span className="block text-xs sm:text-sm font-medium text-[#FCF2EC] group-hover:text-white transition-colors truncate">
+                    {instagramHandle}
+                  </span>
+                </div>
+                <ChevronRightIcon
+                  className="w-3.5 h-3.5 text-[#FCF2EC]/25 group-hover:text-[#FCF2EC]/80 group-hover:translate-x-0.5 transition-all shrink-0 ml-auto"
+                  aria-hidden="true"
+                />
               </a>
             </div>
           </div>
